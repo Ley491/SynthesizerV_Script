@@ -9,8 +9,8 @@ Microsoft Copilotを使って作成したSynthesizer V 2用スクリプト集。
 - [まいこ氏](https://drive.google.com/drive/folders/13YUromADAUrgNrRqJ8k7qAja627rYjXG?usp=sharing)、[此岸さくら氏](https://drive.google.com/drive/folders/1I3iou07fsYIhmf_ZmFItZBCExF285nRa)のスクリプトを参考にしている為、そちらの利用規約も参照ください。
 
 ## 導入方法
-scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダを開く」で表示されたフォルダ）にスクリプト（フォルダごとでもOK）とこのREADME.mdを入れてください。
-任意のフォルダに入れても正常に読み込みます。ファイルのフォルダ分けはカテゴリー分けに影響しないのでご自由にどうぞ。
+scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダを開く」で表示されたフォルダ）にスクリプト（フォルダごとでもOK）とこのREADME.mdを入れてください。  
+任意のフォルダに入れても正常に読み込みます。ファイルのフォルダ分けはカテゴリー分けに影響しないのでご自由にどうぞ。  
 - 例（Windows標準設定の場合）：
     C:\Users\<ユーザー名>\AppData\Roaming\Dreamtonics\Synthesizer V Studio 2\scripts\Ley_Script
 

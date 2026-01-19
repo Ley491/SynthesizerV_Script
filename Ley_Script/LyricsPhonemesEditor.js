@@ -1,5 +1,5 @@
 /* スクリプトパネル用スクリプト
-- まいこ氏作スクリプトEditLyrics.jsとSelectPlayPosiNote.jsも元に改変。
+- まいこ氏作スクリプトEditLyrics.jsとSelectPlayPosiNote.jsを元に改変。
 - 対象を選択ノート一つに限定し、歌詞と一緒に音素も編集できるようにしたもの。
   - 音素はデフォルト（未編集）状態では何も表示されません。
 - 「取得」ボタンを押すとノート未選択でも再生バーの位置にあるノートの歌詞と音素を取得します。
@@ -15,7 +15,7 @@ function getClientInfo() {
     "versionNumber" : 1.0,
     "minEditorVersion" : 131330,
     "type": "SidePanelSection",
-    "category" : "Lyrics"
+    "category" : "Ley Script"
   };
 }
 

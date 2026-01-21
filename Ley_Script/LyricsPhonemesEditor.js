@@ -1,7 +1,8 @@
 /* スクリプトパネル用スクリプト
-- まいこ氏作スクリプトEditLyrics.jsとSelectPlayPosiNote.jsを元に改変。
+- まいこ氏作スクリプト（EditLyrics.js, SelectPlayPosiNote.js）を元に改変。
 - 対象を選択ノート一つに限定し、歌詞と一緒に音素も編集できるようにしたもの。
   - 音素はデフォルト（未編集）状態では何も表示されません。
+  - 歌唱言語もプルダウンから変更できるようにしました。（広東語だけUI表示を翻訳してくれません）
 - 「取得」ボタンを押すとノート未選択でも再生バーの位置にあるノートの歌詞と音素を取得します。
   - スマートピッチ編集ツールやスマートピッチペンツール使用時に使うと便利。
 - チェックボックスの「再生位置のノートを取得」をONにすると、常にノートが未選択状態でも再生バーの位置にあるノートの歌詞と音素を取得できます。
@@ -11,7 +12,7 @@
 function getClientInfo() {
   return {
     "name" : ".LyricsPhonemesEditor",
-    "author" : "Ley", // base: Maiko
+    "author" : "Ley", 
     "versionNumber" : 1.0,
     "minEditorVersion" : 131330,
     "type": "SidePanelSection",
@@ -25,9 +26,16 @@ function getTranslations(langCode) {
     return [
       ["Lyrics/Phonemes Editor", "歌詞・音素編集"],
       ["Lyrics", "歌詞"],
-      // ["Ignore the selection", "選択範囲を無視する"],
       ["Select note at playback position", "再生位置のノートを取得"],
       ["Get note at playback", "取得"],
+      ["Language", "言語"],
+      ["Default Language", "デフォルト言語"],
+      ["English", "英語"],
+      ["Mandarin Chinese", "中国語標準語"],
+      ["Japanese", "日本語"],
+      ["Spanish", "スペイン語"],
+      ["Cantonese", "広東語"], // 何故か翻訳してくれない
+      ["Korean", "韓国語"],
       // ["Skip br", "brをスキップする"],,
       // ["Skip a-z", "a-zをスキップする"],
       ["Reset Phoneme", "音素をリセット"],
@@ -41,17 +49,48 @@ function getTranslations(langCode) {
 var selectAtPlaybackCheck = SV.create("WidgetValue"); // 再生位置のノートを取得
 var getPlaybackNoteButton = SV.create("WidgetValue"); // 再生位置ノート取得ボタン
 var lyricsField = SV.create("WidgetValue"); // 歌詞編集
-// var ignoreSelection = SV.create("WidgetValue"); // 選択範囲を無視する
 var phonemesField = SV.create("WidgetValue"); // 音素編集
 // var skipBr = SV.create("WidgetValue"); // br除外
 // var skipAZ = SV.create("WidgetValue"); // a-z除外
 var resetPhonemeButton = SV.create("WidgetValue"); // 音素編集をリセット
 var applyButtonValue = SV.create("WidgetValue"); // 適用ボタン
+var languageSelect = SV.create("WidgetValue"); // 歌唱言語プルダウン
+
 // デフォルト値
 selectAtPlaybackCheck.setValue(false); // デフォルトはOFF
 // onSelectionChanged();
 // skipBr.setValue(true);  // デフォルトはbr除外する 
 // skipAZ.setValue(false); // デフォルトはa-zを除外しない
+// languageSelect.setValue("Default Language"); // 初期値が必要。デフォルトはボイスの収録言語（表示名）
+
+// プルダウン用表示名リスト
+var languageChoices = [
+  SV.T("Default Language"),
+  SV.T("English"),
+  SV.T("Mandarin Chinese"),
+  SV.T("Japanese"),
+  SV.T("Spanish"),
+  SV.T("Cantonese"),  // 何故か翻訳してくれない
+  SV.T("Korean")
+];
+
+
+// 内部値マッピング
+var languageCodes = [
+  "",   // index 0  ※ 内部値は未設定
+  "english",   // 1
+  "mandarin",  // 2
+  "japanese",  // 3
+  "spanish",   // 4
+  "cantonese", // 5
+  "korean"     // 6
+];
+
+// デフォルト値（インデックスで指定）
+selectAtPlaybackCheck.setValue(false);
+languageSelect.setValue(0); // "Default Language"
+
+
 // コールバック
 // チェックボックス切り替え式再生位置のノートを取得コールバック
 selectAtPlaybackCheck.setValueChangeCallback(function(value){
@@ -86,6 +125,30 @@ getPlaybackNoteButton.setValueChangeCallback(function(value){
   }
 });
 
+/*
+//  プルダウン変更時に歌唱言語をノートへ適用
+languageSelect.setValueChangeCallback(function(index){
+  var value = languageCodes[index]; // 内部コード取得
+
+  var selection = SV.getMainEditor().getSelection();
+  var notes = selection.getSelectedNotes();
+  if (notes.length == 0) return;
+
+  var note = notes[0];
+  var attr = note.getAttributes();
+
+  if (value === "default") {
+    // デフォルトに戻す → languageOverride を削除
+    delete attr.languageOverride;
+  } else {
+    // 言語を明示設定
+    attr.languageOverride = value;
+  }
+
+  note.setAttributes(attr);
+});
+*/
+
 // Click event（適用ボタン実行処理）
 applyButtonValue.setValueChangeCallback(function() {
   var selection = SV.getMainEditor().getSelection();
@@ -107,49 +170,19 @@ applyButtonValue.setValueChangeCallback(function() {
   } else {
     note.setPhonemes("");
   }
-});
-/*
-applyButtonValue.setValueChangeCallback(function() {
-  var selectedNotes = getSelectedNotes();
-  if (selectedNotes.length == 0) return;
 
-  var selection = SV.getMainEditor().getSelection();
-  var groupReference = SV.getMainEditor().getCurrentGroup();
-  var group = groupReference.getTarget();
-  var newSelection = [];
-  var lyrics = lyricsField.getValue().split(/[\s,　]/);
-  lyrics = lyrics.filter(Boolean);
-  var startIndex = selectedNotes[0].getIndexInParent();
-
-  var n = 0;
-  for (var i = 0; i < lyrics.length; i ++) {
-    var note;
-    if (ignoreSelection.getValue()) {
-      while (startIndex + n < group.getNumNotes()) {
-        note = group.getNote(startIndex + n);
-        n++;
-        if (shouldChangeLyric(note)) break;
-      }
-    } else {
-      while (n < selectedNotes.length) {
-        note = selectedNotes[n];
-        n++;
-        if (shouldChangeLyric(note)) break;
-      }
-    }
-    if (!shouldChangeLyric(note)) break;
-
-    note.setLyrics(lyrics[i]);
-    note.setPhonemes("");
-    newSelection.push(note);
+  // 歌唱言語設定を適用
+  var idx = languageSelect.getValue();
+  var value = languageCodes[idx];
+  var attr3 = note.getAttributes();
+  if (value === "default") {
+    delete attr3.languageOverride;
+  } else {
+    attr3.languageOverride = value;
   }
+  note.setAttributes(attr3);
 
-  selection.clearAll();
-  for (var i = 0; i < newSelection.length; i ++) {
-    selection.selectNote(newSelection[i]);
-  }
 });
-*/
 
 /*
 // "br, a-zをスキップするか選択できる機能
@@ -230,10 +263,24 @@ function onSelectionChanged() {
       phonemesField.setValue("");
       return;
     }
+    // 歌詞・音素
     lyricsField.setValue(note.getLyrics());
     var ph = note.getPhonemes();
     phonemesField.setValue(ph && ph.trim() !== "" ? ph : "");
+
+    // 歌唱言語
+    var attr = note.getAttributes();
+    var lang = attr.languageOverride || "default";
+
+    // lang に対応するインデックスを探してセット
+    for (var i = 0; i < languageCodes.length; i++) {
+      if (languageCodes[i] === lang) {
+        languageSelect.setValue(i);
+        break;
+      }
+    }
     return;
+
   }
 
   // 通常モード（選択ノートを反映）
@@ -243,61 +290,24 @@ function onSelectionChanged() {
     return;
   }
   var note = notes[0];
+  // 歌詞・音素
   lyricsField.setValue(note.getLyrics());
   var ph = note.getPhonemes();
   phonemesField.setValue(ph && ph.trim() !== "" ? ph : "");
-}
-/*
-// 選択変更時の更新
-function onSelectionChanged() {
-  var selection = SV.getMainEditor().getSelection();
-  var notes = selection.getSelectedNotes();
-  if (notes.length == 0) {
-    lyricsField.setValue("");
-    phonemesField.setValue("");
-    return;
-  }
 
-  var note = notes[0]; // 常に1ノート
-  lyricsField.setValue(note.getLyrics());
+  // 歌唱言語
+  var attr = note.getAttributes();
+  var lang = attr.languageOverride || "default";
 
-  var ph = note.getPhonemes();
-  if (ph && ph.trim() !== "") {
-    phonemesField.setValue(ph);
-  } else {
-    phonemesField.setValue(""); // 自動推定なら空欄
-  }
-}
-*/
-/*
-function onSelectionChanged() {
-  var selectedNotes = getSelectedNotes();
-  if (selectedNotes.length == 0) {
-    lyricsField.setValue("");
-    return;
-  }
-  var groupReference = SV.getMainEditor().getCurrentGroup();
-  var group = groupReference.getTarget();
-
-  var lyrics = [];
-  if (ignoreSelection.getValue()) {
-    var start = selectedNotes[0].getIndexInParent();
-    var end = selectedNotes[selectedNotes.length - 1].getIndexInParent()
-    for (var i = start; i <= end; i ++) {
-      note = group.getNote(i);
-      if (!shouldChangeLyric(note)) continue;
-      lyrics.push(note.getLyrics());
-    }
-  } else {
-    for (var i = 0; i < selectedNotes.length; i ++) {
-      var note = selectedNotes[i];
-      if (!shouldChangeLyric(note)) continue;
-      lyrics.push(note.getLyrics());
+  // lang に対応するインデックスを探してセット
+  for (var i = 0; i < languageCodes.length; i++) {
+    if (languageCodes[i] === lang) {
+      languageSelect.setValue(i);
+      break;
     }
   }
-  lyricsField.setValue(lyrics.join(" "));
 }
-*/
+
 
 // Panel section（パネルUI）
 function getSidePanelSectionState() {
@@ -318,6 +328,20 @@ function getSidePanelSectionState() {
             "text": SV.T("Get note at playback"),
             "value": getPlaybackNoteButton,
             "width": 0.3
+          }
+        ]
+      },
+      {
+        "type": "Label",
+        "text": SV.T("Language"),
+      },
+      {
+        "type": "Container",
+        "columns": [
+          { // 歌唱言語
+            "type": "ComboBox",
+            "choices": languageChoices,
+            "value": languageSelect
           }
         ]
       },
@@ -351,19 +375,6 @@ function getSidePanelSectionState() {
           }
         ]
       },
-      /*
-      { // 選択したノートだけに歌詞を適用するか、選択を無視して後続ノートに歌詞を流し込むかを切り替えるチェックボックス
-        "type": "Container",
-        "columns": [
-          {
-            "type": "CheckBox",
-            "text": SV.T("Ignore the selection"), 
-            "value": ignoreSelection,
-            "width": 1.0
-          }
-        ]
-      },
-      */
      /*
       { // brを除外するチェックボックス
         "type": "Container",

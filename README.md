@@ -17,6 +17,7 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
 ## スクリプトの説明
 - LyricsPhonemesEditor.js: 歌詞・音素編集用
 - ScrollSettings_UI.js: 自動スクロール設定編集用
+- TrackColorChanger_HSV.js: 
 
 ### LyricsPhonemesEditor.js
 - スクリプトパネル用歌詞・音素編集スクリプト
@@ -40,6 +41,15 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
 - 再生中ノートの自動選択機能を搭載（br は除外）。
 - デフォルト値へのリセット、スクロール処理の ON/OFF 切り替えに対応。
 
+### TrackColorChanger_HSV.js
+- まいこ氏作スクリプト（TrackColorChanger_MaterialDesign.js, TrackColorChanger_SVColor.js）を元に改変。
+- HSV形式でトラックカラーを設定し変更できます。
+    - 現在選択中のトラックカラーがまず反映されているので、そこからスライダーで色調の変更が可能です。
+    - カラーコードも表示されていますが、スライダーで変更した色は反映されません。
+- トラックカラー変更後も同じトラックを再選択します。
+
+### 
+
 ## 更新履歴
 ### 2026-01-19
 - LyricsPhonemesEditor.js と ScrollSettings_UI.js を公開。
@@ -47,6 +57,9 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
 ### 2026-01-21
 - LyricsPhonemesEditor.jsを更新。
     - 歌唱言語変更機能の追加。
+
+### 2026-01-22
+- TrackColorChanger_HSV.jsを追加。
 
 ## 連絡先
 - Ley

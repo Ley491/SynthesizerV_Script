@@ -34,7 +34,7 @@ function getTranslations(langCode) {
       ["Mandarin Chinese", "中国語標準語"],
       ["Japanese", "日本語"],
       ["Spanish", "スペイン語"],
-      ["Cantonese", "広東語"], // 何故か翻訳してくれない
+      ["Cantonese Chinese", "広東語"], // Chineseをつけないと翻訳してくれない
       ["Korean", "韓国語"],
       // ["Skip br", "brをスキップする"],,
       // ["Skip a-z", "a-zをスキップする"],
@@ -70,7 +70,7 @@ var languageChoices = [
   SV.T("Mandarin Chinese"),
   SV.T("Japanese"),
   SV.T("Spanish"),
-  SV.T("Cantonese"),  // 何故か翻訳してくれない
+  SV.T("Cantonese Chinese"),  // Chineseをつけないと翻訳してくれない
   SV.T("Korean")
 ];
 

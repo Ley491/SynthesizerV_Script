@@ -17,7 +17,7 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
 ## スクリプトの説明
 - LyricsPhonemesEditor.js: 歌詞・音素編集用
 - ScrollSettings_UI.js: 自動スクロール設定編集用
-- TrackColorChanger_HSV.js: 
+- TrackColorChanger_HSV.js: HSV版トラックカラー変更機能
 
 ### LyricsPhonemesEditor.js
 - スクリプトパネル用歌詞・音素編集スクリプト
@@ -32,21 +32,22 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
 
 
 ### ScrollSettings_UI.js
-- スクリプトパネル用スクロール設定編集スクリプト
+- スクリプトパネル用自動スクロール設定編集スクリプト
     - まいこ氏作スクリプト（SmoothNavigationPlayPlus.js, AutoVerticalScroll.js, SelectPlayPosiNote.js）と此岸さくら氏作スクリプト（SelectPlayingNote Patched.js）を参考に改変。
 - 再生中の縦・横スクロール挙動を細かく調整できるようにしたもの。
     - 上下の余白、先読み小節数、縦スクロール速度を調整可能。
     - 右余白によるページ送り、ページ送り後の左余白（オフセット）、横スクロール速度を調整可能。
     - ピアノロールとアレンジビューの両方に対応。
 - 再生中ノートの自動選択機能を搭載（br は除外）。
-- デフォルト値へのリセット、スクロール処理の ON/OFF 切り替えに対応。
+- デフォルト値へのリセット、自動スクロール処理の ON/OFF 切り替えに対応。
 
 ### TrackColorChanger_HSV.js
-- まいこ氏作スクリプト（TrackColorChanger_MaterialDesign.js, TrackColorChanger_SVColor.js）を元に改変。
-- HSV形式でトラックカラーを設定し変更できます。
-    - 現在選択中のトラックカラーがまず反映されているので、そこからスライダーで色調の変更が可能です。
-    - カラーコードも表示されていますが、スライダーで変更した色は反映されません。
-- トラックカラー変更後も同じトラックを再選択します。
+- スクリプトリストもしくはショートカット実行用HSV版トラックカラー変更スクリプト
+    - まいこ氏作スクリプト（TrackColorChanger_MaterialDesign.js, TrackColorChanger_SVColor.js）を元に改変。
+    - HSV形式でトラックカラーを設定し変更できます。
+        - 現在選択中のトラックカラーがまず反映されているので、そこからスライダーで色調の変更が可能です。
+        - カラーコードも表示されていますが、スライダーで変更した色は反映されません。
+    - トラックカラー変更後も同じトラックを再選択します。
 
 ### 
 

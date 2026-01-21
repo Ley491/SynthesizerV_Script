@@ -13,7 +13,7 @@ function getClientInfo() {
   return {
     "name" : ".LyricsPhonemesEditor",
     "author" : "Ley", 
-    "versionNumber" : 1.0,
+    "versionNumber" : 1.1,
     "minEditorVersion" : 131330,
     "type": "SidePanelSection",
     "category" : "Ley Script"

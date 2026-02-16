@@ -49,7 +49,14 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
         - カラーコードも表示されていますが、スライダーで変更した色は反映されません。
     - トラックカラー変更後も同じトラックを再選択します。
 
-### 
+### TrackColorChanger_UI.js
+- スクリプトパネル用HSV版トラックカラー変更スクリプト
+    - まいこ氏作スクリプト（TrackColorChanger_MaterialDesign.js, TrackColorChanger_SVColor.js）を元に改変。
+    - TrackColorChanger_HSV.jsのHSV式トラックカラー変更機能をスクリプトパネル化。
+    - プリセット機能を追加。
+        - プリセットセット定義（var presetSets）を編集することでプリセットをカスタマイズ可能。
+        - プリセット内容は追加途中です。
+
 
 ## 更新履歴
 ### 2026-01-19
@@ -61,6 +68,9 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
 
 ### 2026-01-22
 - TrackColorChanger_HSV.jsを追加。
+
+### 2026-02-17
+- TrackColorChanger_UI.jsを追加。
 
 ## 連絡先
 - Ley

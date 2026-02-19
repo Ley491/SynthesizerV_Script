@@ -14,11 +14,14 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
 - 例（Windows標準設定の場合）：  
     C:\Users\<ユーザー名>\AppData\Roaming\Dreamtonics\Synthesizer V Studio 2\scripts\Ley_Script
 
+
 ## スクリプトの説明
 - LyricsPhonemesEditor.js: 歌詞・音素編集用
 - ScrollSettings_UI.js: 自動スクロール設定編集用
 - TrackColorChanger_HSV.js: HSV版トラックカラー変更機能
 - TrackColorChanger_UI.js: HSV版トラックカラー変更機能（スクリプトパネル版）
+- FixPitch_UI.js: ピッチ修正スクリプトのパネルコントロール用
+
 
 ### LyricsPhonemesEditor.js
 - スクリプトパネル用歌詞・音素編集スクリプト
@@ -58,20 +61,30 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
         - プリセットセット定義（var presetSets）を編集することでプリセットをカスタマイズ可能。
         - プリセット内容は追加途中です。
 
+### FixPitch_UI.js
+- スクリプトパネル用ピッチ修正コントロールスクリプト
+    - 此岸さくら氏作スクリプト（Fix Pitch.lua）とまいこ氏作スクリプト（SelectPlayPosiNote.js）を元に改変。
+    - ピッチコントロール生成間隔と開始オフセットをスライダーで調整できるようにしたもの。
+        - 再生位置のノートを取得する機能と選択ノートのピッチコントロールを削除する機能も含まれています。
+
 
 ## 更新履歴
-### 2026-01-19
-- LyricsPhonemesEditor.js と ScrollSettings_UI.js を公開。
+### 2026-02-19
+- FixPitch_UI.js を追加。
+
+### 2026-02-17
+- TrackColorChanger_UI.js を追加。
+
+### 2026-01-22
+- TrackColorChanger_HSV.js を追加。
 
 ### 2026-01-21
 - LyricsPhonemesEditor.jsを更新。
     - 歌唱言語変更機能の追加。
 
-### 2026-01-22
-- TrackColorChanger_HSV.jsを追加。
+### 2026-01-19
+- LyricsPhonemesEditor.js と ScrollSettings_UI.js を公開。
 
-### 2026-02-17
-- TrackColorChanger_UI.jsを追加。
 
 ## 連絡先
 - Ley

@@ -26,6 +26,7 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
 - SelectNotesByLyrics.js: 指定した歌詞を選択するノート選択系スクリプト
 - SelectNotes_UI.js: ノート選択系スクリプトの統合版（スクリプトパネル用）
 
+ ---
 
 ### LyricsPhonemesEditor.js
 - スクリプトパネル用歌詞・音素編集スクリプト
@@ -84,7 +85,7 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
     - 選択中のグループもしくはノートの選択範囲の中から、指定した歌詞を検索して選択します。
 
 ### SelectNotes_UI.js
--スクリプトパネル用ノート選択スクリプト（統合版）
+- スクリプトパネル用ノート選択スクリプト（統合版）
     - SelectNotesBefore.js, SelectNotesAfter.js, SelectNotesByLyrics.jsの3つのノート選択系スクリプトを統合したもの。
         - 前を選択: 選択中のノートを基準に、そのノート自身と前方のノートをすべて選択する。
         - 後ろを選択: 選択中のノートを基準に、そのノート自身と後方のノートをすべて選択する。

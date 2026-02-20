@@ -21,6 +21,10 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
 - TrackColorChanger_HSV.js: HSV版トラックカラー変更機能
 - TrackColorChanger_UI.js: HSV版トラックカラー変更機能（スクリプトパネル版）
 - FixPitch_UI.js: ピッチ修正スクリプトのパネルコントロール用
+- SelectNotesBefore.js: 選択ノート以前を全選択するノート選択系スクリプト
+- SelectNotesAfter.js: 選択ノート以降を全選択するノート選択系スクリプト
+- SelectNotesByLyrics.js: 指定した歌詞を選択するノート選択系スクリプト
+- SelectNotes_UI.js: ノート選択系スクリプトの統合版（スクリプトパネル用）
 
 
 ### LyricsPhonemesEditor.js
@@ -67,8 +71,30 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
     - ピッチコントロール生成間隔と開始オフセットをスライダーで調整できるようにしたもの。
         - 再生位置のノートを取得する機能と選択ノートのピッチコントロールを削除する機能も含まれています。
 
+### SelectNotesBefore.js
+- スクリプトリストもしくはショートカット実行用前方ノートを全選択するノート選択スクリプト
+    - 選択中のノートを基準に、そのノート自身と前方のノートをすべて選択します。
+
+### SelectNotesAfter.js
+- スクリプトリストもしくはショートカット実行用後方ノートを全選択するノート選択スクリプト
+    選択中のノートを基準に、そのノート自身と後方のノートをすべて選択します。
+
+### SelectNotesByLyrics.js
+- スクリプトリストもしくはショートカット実行用指定歌詞を全選択するノート選択スクリプト
+    - 選択中のグループもしくはノートの選択範囲の中から、指定した歌詞を検索して選択します。
+
+### SelectNotes_UI.js
+-スクリプトパネル用ノート選択スクリプト（統合版）
+    - SelectNotesBefore.js, SelectNotesAfter.js, SelectNotesByLyrics.jsの3つのノート選択系スクリプトを統合したもの。
+        - 前を選択: 選択中のノートを基準に、そのノート自身と前方のノートをすべて選択する。
+        - 後ろを選択: 選択中のノートを基準に、そのノート自身と後方のノートをすべて選択する。
+        - 歌詞で選択: 入力した歌詞と一致するノートをすべて選択する。
+
 
 ## 更新履歴
+### 2026-02-21
+- SelectNotesBefore.js と SelectNotesAfter.js と SelectNotesByLyrics.js と SelectNotes_UI.js を追加。
+
 ### 2026-02-19
 - FixPitch_UI.js を追加。
 

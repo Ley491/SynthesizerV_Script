@@ -21,8 +21,11 @@ function getTranslations(lang) {
     return [
       ["Track Color Changer (HSV)", "トラックカラー変更（HSV版）"],
       ["Hue", "色相"],
+      ["Hue　（R←Y←G←C→B→M→R）", "色相　（赤←黄←緑↔青→紫→赤）"],
       ["Saturation", "彩度"],
+      ["Saturation　（Dull ↔ Vivid）", "彩度　（くすんだ ↔ 鮮やか）"],
       ["Value", "明度"],
+      ["Value　（Dark ↔ Bright）", "明度　（暗い ↔ 明るい）"],
       ["Color Code", "現在のトラックカラー（カラーコード）"]
     ];
   }
@@ -67,7 +70,7 @@ function main() {
       {
         "name": "hue",
         "type": "Slider",
-        "label": SV.T("Hue"),
+        "label": SV.T("Hue　（R←Y←G←C→B→M→R）"),
         "format" : "%1.0f",
         "minValue": 0,
         "maxValue": 360,
@@ -77,7 +80,7 @@ function main() {
       {
         "name": "sat",
         "type": "Slider",
-        "label": SV.T("Saturation"),
+        "label": SV.T("Saturation　（Dull ↔ Vivid）"),
         "format" : "%1.0f",
         "minValue": 0,
         "maxValue": 100,
@@ -87,7 +90,7 @@ function main() {
       {
         "name": "val",
         "type": "Slider",
-        "label": SV.T("Value"),
+        "label": SV.T("Value　（Dark ↔ Bright）"),
         "format" : "%1.0f",
         "minValue": 0,
         "maxValue": 100,

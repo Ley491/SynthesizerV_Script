@@ -16,7 +16,7 @@ function getClientInfo() {
 function getTranslations(lang) {
   if (lang === "ja-jp") {
     return [
-      ["Select Notes Before", "選択ノート以前を選択"],
+      ["Select Notes Before", "指定ノートまでを選択"],
     ];
   }
   return [];

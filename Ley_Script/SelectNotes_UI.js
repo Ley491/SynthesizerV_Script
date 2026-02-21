@@ -2,6 +2,7 @@
 - SelectNotesBefore.js, SelectNotesAfter.js, SelectNotesByLyrics.jsの3つのノート選択系スクリプトをスクリプトパネル版に統合。
   - 前を選択: 選択中のノートを基準に、そのノート自身と前方のノートをすべて選択する
   - 後ろを選択: 選択中のノートを基準に、そのノート自身と後方のノートをすべて選択する
+  - 指定範囲を選択: 選択ノートと再生バーの位置を基準に、その2点の間にあるノートをすべて選択する。
   - 歌詞で選択: 入力した歌詞と一致するノートをすべて選択する
 */
 
@@ -23,21 +24,33 @@ function getTranslations(lang) {
       ["Note Selection Tools", "ノート選択ツール"],
       ["Select notes before", "前を選択"],
       ["Select notes after", "後ろを選択"],
+      ["Select between playhead", "指定範囲を選択"],
       ["Lyric", "歌詞"],
       ["Select by lyric", "歌詞で選択"],
       ["Not found", "見つかりません"],
-      ["The lyric \"%1\" was not found.", "「%1」は見つかりませんでした。"]
+      ["⚠ The lyric \"%1\" was not found.", "⚠ 「%1」は見つかりませんでした。"],
+      ["⚠ No note is selected.", "⚠ ノートが選択されていません。"],
     ];
   }
   return [];
 }
+
+// エラーメッセージ用定義
+var msgString = "";
+
 
 // 前を選択
 function selectBefore() {
   var editor = SV.getMainEditor();
   var selection = editor.getSelection();
   var notes = selection.getSelectedNotes();
-  if (notes.length === 0) return;
+
+  // ノート未選択 → エラーメッセージ表示
+  if (notes.length === 0) {
+    msgString = SV.T("⚠ No note is selected.");
+    SV.refreshSidePanel();
+    return;
+  }
 
   var group = editor.getCurrentGroup().getTarget();
   var base = notes[0];
@@ -52,14 +65,25 @@ function selectBefore() {
     }
   }
   selection.selectNote(base);
+
+  // 成功したらメッセージ消す
+  msgString = "";
+  SV.refreshSidePanel();
 }
+
 
 // 後ろを選択
 function selectAfter() {
   var editor = SV.getMainEditor();
   var selection = editor.getSelection();
   var notes = selection.getSelectedNotes();
-  if (notes.length === 0) return;
+
+  // ノート未選択 → エラーメッセージ表示
+  if (notes.length === 0) {
+    msgString = SV.T("⚠ No note is selected.");
+    SV.refreshSidePanel();
+    return;
+  }
 
   var group = editor.getCurrentGroup().getTarget();
   var base = notes[0];
@@ -74,11 +98,60 @@ function selectAfter() {
     }
   }
   selection.selectNote(base);
+
+  // 成功したらメッセージ消す
+  msgString = "";
+  SV.refreshSidePanel();
 }
 
-// 歌詞で選択
-var msgString = "";
 
+// 指定範囲を選択
+function selectBetweenPlayhead() {
+  var editor = SV.getMainEditor();
+  var selection = editor.getSelection();
+  var notes = selection.getSelectedNotes();
+
+  // ノート未選択 → エラーメッセージ表示
+  if (notes.length === 0) {
+    msgString = SV.T("⚠ No note is selected.");
+    SV.refreshSidePanel();
+    return;
+  }
+
+  var groupRef = editor.getCurrentGroup();
+  var group = groupRef.getTarget();
+
+  var base = notes[0];
+  var baseOnset = base.getOnset();
+  var baseEnd = base.getEnd();
+
+  // 再生バー位置（グループオフセット補正）
+  var playback = SV.getPlayback();
+  var timeAxis = SV.getProject().getTimeAxis();
+  var playPos = timeAxis.getBlickFromSeconds(playback.getPlayhead());
+  var playPosLocal = playPos - groupRef.getTimeOffset();
+
+  // 区間決定（小さい方が start、大きい方が end）
+  var start = Math.min(baseOnset, playPosLocal);
+  var end = Math.max(baseEnd, playPosLocal);
+
+  selection.clearAll();
+
+  for (var i = 0; i < group.getNumNotes(); i++) {
+    var n = group.getNote(i);
+    if (n.getEnd() >= start && n.getOnset() <= end) {
+      selection.selectNote(n);
+    }
+  }
+
+  // 成功したらメッセージ消す
+  msgString = "";
+  SV.refreshSidePanel();
+}
+
+
+
+// 歌詞で選択
 function selectByLyric() {
   var editor = SV.getMainEditor();
   var selection = editor.getSelection();
@@ -109,7 +182,7 @@ function selectByLyric() {
   }
 
   if (count === 0) {
-    msgString = SV.T("The lyric \"%1\" was not found.").replace("%1", target);
+    msgString = SV.T("⚠ The lyric \"%1\" was not found.").replace("%1", target);
     SV.refreshSidePanel();
     return;
   }
@@ -126,6 +199,9 @@ btnBefore.setValue(0);
 
 var btnAfter = SV.create("WidgetValue");
 btnAfter.setValue(0);
+
+var btnBetween = SV.create("WidgetValue");
+btnBetween.setValue(0);
 
 var btnLyric = SV.create("WidgetValue");
 btnLyric.setValue(0);
@@ -148,6 +224,13 @@ btnAfter.setValueChangeCallback(function(value) {
   if (value == 1) {
     selectAfter();
     btnAfter.setValue(0);
+  }
+});
+
+btnBetween.setValueChangeCallback(function(value) {
+  if (value == 1) {
+    selectBetweenPlayhead();
+    btnBetween.setValue(0);
   }
 });
 
@@ -179,6 +262,18 @@ function getSidePanelSectionState() {
             "text": SV.T("Select notes after"),
             "value": btnAfter,
             "width": 0.5
+          }
+        ]
+      },
+      {
+        "type": "Container",
+        "columns": [
+          {
+            "type": "Button",
+            "name": "btnBetween",
+            "text": SV.T("Select between playhead"),
+            "value": btnBetween,
+            "width": 1.0
           }
         ]
       },

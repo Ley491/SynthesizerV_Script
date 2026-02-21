@@ -29,8 +29,11 @@ function getTranslations(lang) {
     return [
       ["Track Color Changer (HSV)", "トラックカラー変更（HSV版）"],
       ["Hue", "色相"],
+      ["Hue （R←Y←G←C→B→M→R）", "色相 （赤←黄←緑↔青→紫→赤）"],
       ["Saturation", "彩度"],
+      ["Saturation （Dull ↔ Vivid）", "彩度 （くすんだ ↔ 鮮やか）"],
       ["Value", "明度"],
+      ["Value （Dark ↔ Bright）", "明度 （暗い ↔ 明るい）"],
       ["Apply", "適用"],
       ["Color Code", "カラーコード"],
       ["Get Track Color", "現在のトラックカラーを取得"],
@@ -586,7 +589,7 @@ function getSidePanelSectionState() {
     columns: [
       {
         type: "Slider",
-        text: SV.T("Hue"),
+        text: SV.T("Hue （R←Y←G←C→B→M→R）"),
         format: "%1.0f",
         minValue: 0,
         maxValue: 360,
@@ -602,7 +605,7 @@ function getSidePanelSectionState() {
     columns: [
       {
         type: "Slider",
-        text: SV.T("Saturation"),
+        text: SV.T("Saturation （Dull ↔ Vivid）"),
         format: "%1.0f",
         minValue: 0,
         maxValue: 100,
@@ -618,7 +621,7 @@ function getSidePanelSectionState() {
     columns: [
       {
         type: "Slider",
-        text: SV.T("Value"),
+        text: SV.T("Value （Dark ↔ Bright）"),
         format: "%1.0f",
         minValue: 0,
         maxValue: 100,

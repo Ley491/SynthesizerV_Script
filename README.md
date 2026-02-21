@@ -21,10 +21,11 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
 - TrackColorChanger_HSV.js: HSV版トラックカラー変更機能
 - TrackColorChanger_UI.js: HSV版トラックカラー変更機能（スクリプトパネル版）
 - FixPitch_UI.js: ピッチ修正スクリプトのパネルコントロール用
-- SelectNotesBefore.js: 選択ノート以前を全選択するノート選択系スクリプト
-- SelectNotesAfter.js: 選択ノート以降を全選択するノート選択系スクリプト
+- SelectNotesBefore.js: 指定ノートまでの範囲を全選択するノート選択系スクリプト
+- SelectNotesAfter.js: 指定ノート以降を全選択するノート選択系スクリプト
 - SelectNotesByLyrics.js: 指定した歌詞を選択するノート選択系スクリプト
 - SelectNotes_UI.js: ノート選択系スクリプトの統合版（スクリプトパネル用）
+- SelectNotesBetween.js: 指定範囲のノートを全選択するノート選択系スクリプト
 
  ---
 
@@ -89,10 +90,23 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
     - SelectNotesBefore.js, SelectNotesAfter.js, SelectNotesByLyrics.jsの3つのノート選択系スクリプトを統合したもの。
         - 前を選択: 選択中のノートを基準に、そのノート自身と前方のノートをすべて選択する。
         - 後ろを選択: 選択中のノートを基準に、そのノート自身と後方のノートをすべて選択する。
+        - 指定範囲を選択: 選択ノートと再生バーの位置を基準に、その2点の間にあるノートをすべて選択する。
         - 歌詞で選択: 入力した歌詞と一致するノートをすべて選択する。
+
+### SelectNotesBetween.js
+- スクリプトリストもしくはショートカット実行用指定範囲のノートを全選択するノート選択スクリプト
+    - 選択ノートと再生バーの位置を基準に、その2点の間にあるノートをすべて選択します。
 
 
 ## 更新履歴
+### 2026-02-21
+- TrackColorChanger_HSV.js と TrackColorChanger_UI.js を更新。
+    - HSVスライダーに色相・彩度・明度の方向ラベルを追加し、操作の直感性を改善。
+- SelectNotesBetween.js を追加。
+- SelectNotes_UI.js を更新。
+    - 指定範囲のノートを選択する機能を追加。
+    - ノートが選択されていない時のエラーメッセージ表示を追加。
+
 ### 2026-02-21
 - SelectNotesBefore.js と SelectNotesAfter.js と SelectNotesByLyrics.js と SelectNotes_UI.js を追加。
 

@@ -11,7 +11,7 @@ function getClientInfo() {
   return {
     name: SV.T("Track Color Changer (HSV)"),
     author: "Ley",
-    versionNumber: 1.1,
+    versionNumber: 1.2,
     minEditorVersion: 65537,
     category: "Ley Script"
   };

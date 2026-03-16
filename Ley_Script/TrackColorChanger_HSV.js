@@ -3,6 +3,7 @@
 - HSV形式でトラックカラーを設定し変更できます。
   - 現在選択中のトラックカラーがまず反映されているので、そこからスライダーで色調の変更が可能です。
   - カラーコードも表示されていますが、スライダーで変更した色は反映されません。
+    - RGB↔HSVで変換する都合上数値のズレが発生する可能性があります。
 - トラックカラー変更後も同じトラックを再選択します。
 */
 
@@ -10,7 +11,7 @@ function getClientInfo() {
   return {
     name: SV.T("Track Color Changer (HSV)"),
     author: "Ley",
-    versionNumber: 1.0,
+    versionNumber: 1.1,
     minEditorVersion: 65537,
     category: "Ley Script"
   };
@@ -71,30 +72,30 @@ function main() {
         "name": "hue",
         "type": "Slider",
         "label": SV.T("Hue　（R←Y←G←C→B→M→R）"),
-        "format" : "%1.0f",
+        "format" : "%1.2f",
         "minValue": 0,
         "maxValue": 360,
-        "interval": 1,
+        "interval": 0.01,
         "default": hsv.h
       },
       {
         "name": "sat",
         "type": "Slider",
         "label": SV.T("Saturation　（Dull ↔ Vivid）"),
-        "format" : "%1.0f",
+        "format" : "%1.2f",
         "minValue": 0,
         "maxValue": 100,
-        "interval": 1,
+        "interval": 0.01,
         "default": hsv.s
       },
       {
         "name": "val",
         "type": "Slider",
         "label": SV.T("Value　（Dark ↔ Bright）"),
-        "format" : "%1.0f",
+        "format" : "%1.2f",
         "minValue": 0,
         "maxValue": 100,
-        "interval": 1,
+        "interval": 0.01,
         "default": hsv.v
       },
     ]
@@ -132,8 +133,76 @@ function main() {
   SV.finish();
 }
 
-// ---- Utility ----
 
+// HSV処理
+function toHex(v) {
+  var h = v.toString(16);
+  return h.length < 2 ? "0" + h : h;
+}
+
+function rgbToHsv(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+
+  var max = Math.max(r, g, b);
+  var min = Math.min(r, g, b);
+  var d = max - min;
+
+  var h = 0;
+  if (d !== 0) {
+    if (max === r) h = 60 * (((g - b) / d) % 6);
+    else if (max === g) h = 60 * (((b - r) / d) + 2);
+    else h = 60 * (((r - g) / d) + 4);
+  }
+  if (h < 0) h += 360;
+
+  var s = max === 0 ? 0 : (d / max) * 100;
+  var v = max * 100;
+
+  // return { h: h, s: s, v: v };
+  return {
+    h: round3(h),
+    s: round3(s),
+    v: round3(v)
+  };
+}
+
+function round3(v) {
+  return Math.round(v * 1000) / 1000;
+}
+
+function hsvToRgb(h, s, v) {
+  h = ((h % 360) + 360) % 360;
+  s = Math.max(0, Math.min(100, s)) / 100;
+  v = Math.max(0, Math.min(100, v)) / 100;
+
+  var c = v * s;
+  var x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  var m = v - c;
+
+  var r = 0, g = 0, b = 0;
+
+  if (h < 60)      { r = c; g = x; b = 0; }
+  else if (h < 120){ r = x; g = c; b = 0; }
+  else if (h < 180){ r = 0; g = c; b = x; }
+  else if (h < 240){ r = 0; g = x; b = c; }
+  else if (h < 300){ r = x; g = 0; b = c; }
+  else             { r = c; g = 0; b = x; }
+
+var result = {
+  r: clamp255((r + m) * 255),
+  g: clamp255((g + m) * 255),
+  b: clamp255((b + m) * 255)
+};
+
+return correctRgb(result);
+}
+
+function clamp255(v) {
+  return Math.min(255, Math.max(0, Math.round(v)));
+}
+
+
+/* 旧処理（変換時にズレあり）
 function toHex(v) {
   var h = v.toString(16);
   return (h.length < 2 ? "0" + h : h);
@@ -183,3 +252,4 @@ function hsvToRgb(h, s, v) {
     b: Math.round((b + m) * 255)
   };
 }
+*/

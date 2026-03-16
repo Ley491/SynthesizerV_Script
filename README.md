@@ -26,6 +26,7 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
 - SelectNotesByLyrics.js: 指定した歌詞を選択するノート選択系スクリプト
 - SelectNotes_UI.js: ノート選択系スクリプトの統合版（スクリプトパネル用）
 - SelectNotesBetween.js: 指定範囲のノートを全選択するノート選択系スクリプト
+- ScaleAnalyzer.js: ノートの構成音からスケールを解析するスクリプト
 
  ---
 
@@ -94,9 +95,15 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
         - 歌詞で選択: 入力した歌詞と一致するノートをすべて選択する。
 
 ### SelectNotesBetween.js
-- スクリプトリストもしくはショートカット実行用指定範囲のノートを全選択するノート選択スクリプト
+- スクリプトリストもしくはショートカット実行用指定範囲のノートを全選択するノート選択スクリプト。
     - 選択ノートと再生バーの位置を基準に、その2点の間にあるノートをすべて選択します。
 
+### ScaleAnalyzer.js
+- スクリプトパネル用スケール解析スクリプト
+    - 此岸さくら氏作スクリプト（ScaleManager.js）を参考に、主音推定方式ではなく構成音からスケール候補を抽出する方式に再構成。
+        - 曲の雰囲気（Bright / Dark / Jazzy / Exotic）から候補を絞り込むことも可能。
+    - 構成音が全く同じスケール（平行調・モードなど）はひとまとめにして表示します。
+        - OctatonicスケールのHalf-Whole（半音-全音）はSV2 Editor のスケール設定が非対応なので除外しています。
 
 
 ## 更新履歴
@@ -104,6 +111,7 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
 - TrackColorChanger_HSV.js と TrackColorChanger_UI.js を更新。
     - RGB↔HSV変換処理の数値ズレを緩和。
     - HSVスライダーの操作感度を細かく変更。
+- ScaleAnalyzer.js を追加。
 
 
 ### 2026-02-21

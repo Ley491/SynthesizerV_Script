@@ -4,7 +4,7 @@ Microsoft Copilotを使って作成したSynthesizer V 2用スクリプト集。
 動作確認環境：Windows 11 / Synthesizer V Studio 2 Pro
 
 ## 利用規約
-- スクリプトを利用して発生した問題については責任を取りませんので自己責任でご利用ください。
+- スクリプトを利用して発生した問題については責任を取れませんので自己責任でご利用ください。
 - 自作発言・再配布禁止。
 - [まいこ氏](https://drive.google.com/drive/folders/13YUromADAUrgNrRqJ8k7qAja627rYjXG?usp=sharing)、[此岸さくら氏](https://drive.google.com/drive/folders/1I3iou07fsYIhmf_ZmFItZBCExF285nRa)のスクリプトを参考にしている為、そちらの利用規約も参照ください。
 
@@ -98,17 +98,22 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
     - 選択ノートと再生バーの位置を基準に、その2点の間にあるノートをすべて選択します。
 
 
+
 ## 更新履歴
+### 2026-03-16
+- TrackColorChanger_HSV.js と TrackColorChanger_UI.js を更新。
+    - RGB↔HSV変換処理の数値ズレを緩和。
+    - HSVスライダーの操作感度を細かく変更。
+
+
 ### 2026-02-21
+- SelectNotesBefore.js と SelectNotesAfter.js と SelectNotesByLyrics.js と SelectNotes_UI.js を追加。
 - TrackColorChanger_HSV.js と TrackColorChanger_UI.js を更新。
     - HSVスライダーに色相・彩度・明度の方向ラベルを追加し、操作の直感性を改善。
 - SelectNotesBetween.js を追加。
 - SelectNotes_UI.js を更新。
     - 指定範囲のノートを選択する機能を追加。
     - ノートが選択されていない時のエラーメッセージ表示を追加。
-
-### 2026-02-21
-- SelectNotesBefore.js と SelectNotesAfter.js と SelectNotesByLyrics.js と SelectNotes_UI.js を追加。
 
 ### 2026-02-19
 - FixPitch_UI.js を追加。

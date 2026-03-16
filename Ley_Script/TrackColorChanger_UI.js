@@ -58,19 +58,7 @@ var getTrackColorButton = SV.create("WidgetValue");
 // ---- プリセットセット定義（ラベル optional、列数可変） ----
 var presetSets = {
     "Select Preset Set": { // デフォルト設定
-        // layout: []   // ← 何も表示しない場合はこれのみ
-        layout: [
-            { type: "grid", columns: 2, items: [  // columns: 2 = ボタン2つ並び
-                { name : "奏", rgb : "8c4669" },  // 奏
-                { name : "Farida", rgb : "BB6688" },  // カーネーション
-                { name : "まふゆ", rgb : "636399" },  // まふゆ
-                { name : "Wistaria", rgb : "8888CC" },  // 藤の花
-                { name : "絵名", rgb : "997754" },  // 絵名
-                { name : "Camel", rgb : "CCAA88" },  // らくだ
-                { name : "瑞希", rgb : "a66c92" },  // 瑞希                
-                { name : "Thistle", rgb : "DDAACC" },  // アザミ
-              ]},
-        ]
+        layout: []   // ← 何も表示しない場合はこれのみ
     },
 
   "SV Colors": {

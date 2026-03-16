@@ -7,6 +7,7 @@
 - 再生中ノートの自動選択機能を搭載（br は除外）。
 - 次のグループに自動で選択を切り替えます。
     - 選択トラックの再生位置にノートが存在しない場合、他のトラックを探索して自動で切り替えます（ON/OFF 可能）。
+    - 対象が複数存在する場合は、対象グループの始点が最も早いトラックに切り替わります。
 - デフォルト値へのリセット、スクロール処理の ON/OFF 切り替え可能です。
 - コードには残っていますがプリセット機能は動きません（UIにも表示してません）。
 */
@@ -15,7 +16,7 @@ function getClientInfo() {
   return {
     "name" : "Scroll Settings UI",
     "author" : "Ley", 
-    "versionNumber" : 1.2,
+    "versionNumber" : 1.3,
     "minEditorVersion" : 131330,
     "type": "SidePanelSection",
     "category" : "Ley Script"

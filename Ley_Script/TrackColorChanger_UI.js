@@ -1,6 +1,7 @@
 /* 
 - まいこ氏作スクリプト（TrackColorChanger_MaterialDesign.js, TrackColorChanger_SVColor.js）を元に改変。
 - カラーコードもしくはHSV形式でトラックカラーを設定し変更できます。
+  - RGB↔HSVで変換する都合上数値のズレが発生する可能性があります。
   -「トラックカラー取得」ボタンから現在選択中のトラックカラーを取得できます。
     - カラー変更自体はトラックカラーを取得しなくても可能です。
 - プリセットを選択すると事前に設定しておいた色を選べます。
@@ -15,7 +16,7 @@ function getClientInfo() {
   return {
     "name" : "Track Color Changer UI",
     "author" : "Ley",
-    "versionNumber" : 1.0,
+    "versionNumber" : 1.2,
     "minEditorVersion" : 131329,
     "type": "SidePanelSection",
     "category" : "Ley Script"
@@ -29,11 +30,11 @@ function getTranslations(lang) {
     return [
       ["Track Color Changer (HSV)", "トラックカラー変更（HSV版）"],
       ["Hue", "色相"],
-      ["Hue （R←Y←G←C→B→M→R）", "色相 （赤←黄←緑↔青→紫→赤）"],
+      ["Hue （R←Y←G←C→B→M→R）", "色相（赤←黄←緑↔青→紫→赤）"],
       ["Saturation", "彩度"],
-      ["Saturation （Dull ↔ Vivid）", "彩度 （くすんだ ↔ 鮮やか）"],
+      ["Saturation （Dull ↔ Vivid）", "彩度（くすんだ ↔ 鮮やか）"],
       ["Value", "明度"],
-      ["Value （Dark ↔ Bright）", "明度 （暗い ↔ 明るい）"],
+      ["Value （Dark ↔ Bright）", "明度（暗い ↔ 明るい）"],
       ["Apply", "適用"],
       ["Color Code", "カラーコード"],
       ["Get Track Color", "現在のトラックカラーを取得"],
@@ -43,6 +44,7 @@ function getTranslations(lang) {
 }
 
 var isPresetApplying = false;
+var exactHexValue = null;
 
 // WidgetValue
 var hueValue = SV.create("WidgetValue");
@@ -56,7 +58,19 @@ var getTrackColorButton = SV.create("WidgetValue");
 // ---- プリセットセット定義（ラベル optional、列数可変） ----
 var presetSets = {
     "Select Preset Set": { // デフォルト設定
-        layout: []   // ← 何も表示しない
+        // layout: []   // ← 何も表示しない場合はこれのみ
+        layout: [
+            { type: "grid", columns: 2, items: [  // columns: 2 = ボタン2つ並び
+                { name : "奏", rgb : "8c4669" },  // 奏
+                { name : "Farida", rgb : "BB6688" },  // カーネーション
+                { name : "まふゆ", rgb : "636399" },  // まふゆ
+                { name : "Wistaria", rgb : "8888CC" },  // 藤の花
+                { name : "絵名", rgb : "997754" },  // 絵名
+                { name : "Camel", rgb : "CCAA88" },  // らくだ
+                { name : "瑞希", rgb : "a66c92" },  // 瑞希                
+                { name : "Thistle", rgb : "DDAACC" },  // アザミ
+              ]},
+        ]
     },
 
   "SV Colors": {
@@ -114,9 +128,9 @@ var presetSets = {
               ]}, 
             { type: "label", text: "Haruno Sora AI 2" },
             { type: "grid", columns: 3, items: [
-                { name : "???", rgb : "D02352" },
-                { name : "???", rgb : "F64676" },
-                { name : "???", rgb : "FF95BC" },
+                { name : "Turquoise", rgb : "00afcc" },
+                { name : "Cool Blue", rgb : "b0ddf7" },
+                { name : "Warley Rose", rgb : "f1c4da" },
               ]}, 
             { type: "label", text: "Frimomen AI" },
             { type: "grid", columns: 3, items: [
@@ -162,27 +176,27 @@ var presetSets = {
               ]},               
             { type: "label", text: "Nekomura Iroha AI 2" },
             { type: "grid", columns: 3, items: [
-                { name : "???", rgb : "D02352" },
-                { name : "???", rgb : "F64676" },
-                { name : "???", rgb : "FF95BC" },
+                { name : "Carmine", rgb : "d11c2c" },
+                { name : "Magenta", rgb : "e72282" },
+                { name : "Nile Blue", rgb : "2cb4ad" },
               ]},               
             { type: "label", text: "Koharu Rikka" },
             { type: "grid", columns: 3, items: [
-                { name : "???", rgb : "D02352" },
-                { name : "???", rgb : "F64676" },
-                { name : "???", rgb : "FF95BC" }
+                { name : "Pink Red", rgb : "f2aab7" },
+                { name : "Baby Pink", rgb : "ffc9d2" },
+                { name : "Pale Azure", rgb : "adcdec" } // 薄花桜
             ]},
             { type: "label", text: "Natsuki Karin AI" },
             { type: "grid", columns: 3, items: [
-                { name : "???", rgb : "D02352" },
-                { name : "???", rgb : "F64676" },
-                { name : "???", rgb : "FF95BC" }
+                { name : "Mulberry", rgb : "b455a0" },
+                { name : "Sweet Pink", rgb : "ebb7de" },
+                { name : "Viola", rgb : "b48cd0" }
             ]},
             { type: "label", text: "Hanakuma Chifuyu AI" },
             { type: "grid", columns: 3, items: [
-                { name : "???", rgb : "D02352" },
-                { name : "???", rgb : "F64676" },
-                { name : "???", rgb : "FF95BC" }
+                { name : "Gum Leaf", rgb : "add3c3" },
+                { name : "Geyser", rgb : "cee8dd" },
+                { name : "Lime Green", rgb : "e8f4d2" }
             ]},
         ]
     },  /*
@@ -389,9 +403,7 @@ function applyTrackColorToUI(track) {
 }
 */
 
-
-// Apply ボタン
-applyButton.setValueChangeCallback(function () {
+function applyCurrentColor() {
   var editor = SV.getMainEditor();
   var savedTrack = editor.getCurrentTrack();
   var savedGroup = editor.getCurrentGroup();
@@ -404,11 +416,14 @@ applyButton.setValueChangeCallback(function () {
   var s = parseFloat(satValue.getValue());
   var v = parseFloat(valValue.getValue());
 
-  var rgb = hsvToRgb(h, s, v);
-  var hex =
-    toHex(rgb.r) +
-    toHex(rgb.g) +
-    toHex(rgb.b);
+  var hex;
+
+  if (exactHexValue !== null) {
+      hex = exactHexValue;
+  } else {
+      var rgb = hsvToRgb(h, s, v);
+      hex = toHex(rgb.r) + toHex(rgb.g) + toHex(rgb.b);
+  }
 
   colorCodeValue.setValue(hex);
 
@@ -422,6 +437,12 @@ applyButton.setValueChangeCallback(function () {
   // トラックとグループの選択状態を復元
   editor.setCurrentTrack(savedTrack);
   editor.setCurrentGroup(savedGroup);
+}
+
+
+// Apply ボタン
+applyButton.setValueChangeCallback(function () {
+  applyCurrentColor();
 });
 
 // ---- カラーコード欄を編集したらスライダーへ反映 ----
@@ -466,6 +487,8 @@ colorCodeValue.setValueChangeCallback(function() {
 
 // ---- スライダー変更時にカラーコードを更新 ----
 function updateColorCodeFromSliders() {
+    exactHexValue = null;
+
     var h = parseFloat(hueValue.getValue());
     var s = parseFloat(satValue.getValue());
     var v = parseFloat(valValue.getValue());
@@ -506,9 +529,12 @@ function selectPreset(i) {
     valValue.setValue(hsv.v);
 
     // カラーコード欄は RGB6桁で統一
-    colorCodeValue.setValue(c.r + c.g + c.b);
+    // colorCodeValue.setValue(c.r + c.g + c.b);
+    exactHexValue = (c.r + c.g + c.b).toLowerCase();
+    colorCodeValue.setValue(exactHexValue);
 
     isPresetApplying = false;
+    applyCurrentColor();  // トラックカラー変更適用
 }
 /*
 function selectPreset(i) {
@@ -590,10 +616,10 @@ function getSidePanelSectionState() {
       {
         type: "Slider",
         text: SV.T("Hue （R←Y←G←C→B→M→R）"),
-        format: "%1.0f",
+        format: "%1.2f",
         minValue: 0,
         maxValue: 360,
-        interval: 1,
+        interval: 0.01,
         value: hueValue
       }
     ]
@@ -606,10 +632,10 @@ function getSidePanelSectionState() {
       {
         type: "Slider",
         text: SV.T("Saturation （Dull ↔ Vivid）"),
-        format: "%1.0f",
+        format: "%1.2f",
         minValue: 0,
         maxValue: 100,
-        interval: 1,
+        interval: 0.01,
         value: satValue
       }
     ]
@@ -622,10 +648,10 @@ function getSidePanelSectionState() {
       {
         type: "Slider",
         text: SV.T("Value （Dark ↔ Bright）"),
-        format: "%1.0f",
+        format: "%1.2f",
         minValue: 0,
         maxValue: 100,
-        interval: 1,
+        interval: 0.01,
         value: valValue
       }
     ]
@@ -728,12 +754,26 @@ function rgbToHsv(r, g, b) {
   var s = max === 0 ? 0 : (d / max) * 100;
   var v = max * 100;
 
-  return { h: h, s: s, v: v };
+  // return { h: h, s: s, v: v };
+  return {
+    h: round3(h),
+    s: round3(s),
+    v: round3(v)
+  };
+}
+
+function round3(v) {
+  return Math.round(v * 1000) / 1000;
 }
 
 function hsvToRgb(h, s, v) {
+  /*
   s /= 100;
   v /= 100;
+  */
+  h = ((h % 360) + 360) % 360;
+  s = Math.max(0, Math.min(100, s)) / 100;
+  v = Math.max(0, Math.min(100, v)) / 100;
 
   var c = v * s;
   var x = c * (1 - Math.abs((h / 60) % 2 - 1));
@@ -748,9 +788,22 @@ function hsvToRgb(h, s, v) {
   else if (h < 300){ r = x; g = 0; b = c; }
   else             { r = c; g = 0; b = x; }
 
+/*
   return {
     r: Math.round((r + m) * 255),
     g: Math.round((g + m) * 255),
     b: Math.round((b + m) * 255)
   };
+*/
+var result = {
+  r: clamp255((r + m) * 255),
+  g: clamp255((g + m) * 255),
+  b: clamp255((b + m) * 255)
+};
+
+return correctRgb(result);
+}
+
+function clamp255(v) {
+  return Math.min(255, Math.max(0, Math.round(v)));
 }

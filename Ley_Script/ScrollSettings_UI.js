@@ -5,8 +5,9 @@
     - 右余白によるページ送り、ページ送り後の左余白（オフセット）、横スクロール速度を調整可能。
     - ピアノロールとアレンジビューの両方に対応。
 - 再生中ノートの自動選択機能を搭載（br は除外）。
-- 同じトラック内の次のグループに自動で選択を切り替える機能を搭載
-- デフォルト値へのリセット、スクロール処理の ON/OFF 切り替えに対応。
+- 次のグループに自動で選択を切り替えます。
+    - 選択トラックの再生位置にノートが存在しない場合、他のトラックを探索して自動で切り替えます（ON/OFF 可能）。
+- デフォルト値へのリセット、スクロール処理の ON/OFF 切り替え可能です。
 - コードには残っていますがプリセット機能は動きません（UIにも表示してません）。
 */
 
@@ -46,7 +47,8 @@ function getTranslations(langCode) {
       ["Reset to Default", "デフォルトに戻す"],
       ["Rename Preset", "プリセット名を変更"],
       ["New Preset Name", "新しいプリセット名"],
-      ["Enable Scroll Logic", "スクロール処理を有効にする"]
+      ["Enable Track Auto-Switch", "トラックを自動で切り替える"],
+      ["Enable Scroll Logic", "スクロール処理を有効にする"],
     ];
   }
   return [];
@@ -65,6 +67,8 @@ var resetButton = SV.create("WidgetValue");   // リセットボタン
 var presetSelector = SV.create("WidgetValue");  // プリセット選択ボタン
 presetSelector.setValue("Default"); 
 
+var enableTrackSwitch = SV.create("WidgetValue");   // トラック切り替え機能
+enableTrackSwitch.setValue(false); // 初期値は自動トラック切り替え無効
 var enableScrollLogic = SV.create("WidgetValue");   // オートスクロール切り替え
 enableScrollLogic.setValue(false); // 初期状態はオートスクロール無効
 
@@ -122,6 +126,7 @@ var presets = {
 var updatePeriod = 50; // 50msごとにチェック※ 100msだと先読み小節数への反応が鈍く、20msだと敏感
 var selectHyphen = false;
 var enableAutoNextGroup = true;
+
 
 // デフォルトに戻す
 resetButton.setValueChangeCallback(function() {
@@ -198,6 +203,8 @@ function makePageTurner(coordSystem) {
   };
 }
 
+// ジャンプ時はスムーズスクロール禁止フラグ
+var justJumped = false;
 // 縦スクロール処理
 function makeVerticalScroll(coordSystem) {
   var playback = SV.getPlayback();
@@ -253,10 +260,57 @@ function makeVerticalScroll(coordSystem) {
     else if (needScrollUp) scrollTarget = center + scrollSpeed.getValue();  // 縦スクロール速度
     else if (needScrollDown) scrollTarget = center - scrollSpeed.getValue();
 
+  /*
     var smoothing = 0.1;
     if (lastCenter === null) lastCenter = center;
     lastCenter = lastCenter * (1 - smoothing) + scrollTarget * smoothing;
     coordSystem.setValueCenter(lastCenter);
+  */
+
+    // 再生バーの位置に少しだけ先読みを足す
+    var early = SV.QUARTER * 0.5;  // ← ここが「どれくらい手前でジャンプするか」（数値が大きいと早く、小さいとギリギリ）
+    // 再生バーがノートにかかった瞬間にだけジャンプする
+    var playheadInGroup = position - groupOffset + early;
+    var activeNote = null;
+
+    for (var i = 0; i < group.getNumNotes(); i++) {
+        var note = group.getNote(i);
+        if (note.getOnset() <= playheadInGroup && playheadInGroup <= note.getEnd()) {
+            activeNote = note;
+            break;
+        }
+    }
+
+    if (activeNote) {
+        var p = activeNote.getPitch();
+
+        var screenTop = viewRange[1];
+        var screenBottom = viewRange[0];
+
+        if (p > screenTop || p < screenBottom) {
+
+            var targetCenter = scrollTarget * 0.8 + p * 0.2;
+
+            coordSystem.setValueCenter(targetCenter);
+            lastCenter = targetCenter;
+
+            justJumped = true;  // このフレームはスムーズスクロール禁止
+            return;
+        }
+    }
+
+    // ジャンプ直後のフレームはスムーズスクロールしない
+    if (justJumped) {
+        justJumped = false;
+        return;
+    }
+
+    // 通常のスムーズスクロール
+    var smoothing = 0.1;
+    if (lastCenter === null) lastCenter = center;
+    lastCenter = lastCenter * (1 - smoothing) + scrollTarget * smoothing;
+    coordSystem.setValueCenter(lastCenter);
+
   };
 }
 
@@ -344,6 +398,81 @@ function switchToNextGroupIfNeeded() {
     }
   }
 }
+// トラック探索+切り替え
+function switchToOtherTrackIfNeeded() {
+  // 自動トラック切り替え無効時は何もしない
+  if (!enableTrackSwitch.getValue()) return;
+
+  var playback = SV.getPlayback();
+  var timeAxis = SV.getProject().getTimeAxis();
+  var seconds = playback.getPlayhead();
+  if (seconds === null) return;
+
+  var position = timeAxis.getBlickFromSeconds(seconds);
+  var project = SV.getProject();
+  var currentGroupRef = SV.getMainEditor().getCurrentGroup();
+  var currentGroup = currentGroupRef.getTarget();
+  var currentOffset = currentGroupRef.getTimeOffset();
+
+  // 先読み範囲（1 小節 = SV.QUARTER * 4）
+  var lookAhead = SV.QUARTER * 4 * lookAheadBars.getValue();
+  var rangeStart = position - currentOffset;
+  var rangeEnd = rangeStart + lookAhead;
+
+  // 現在のグループにノートがあるかチェック
+  var hasNote = false;
+  for (var i = 0; i < currentGroup.getNumNotes(); i++) {
+    var note = currentGroup.getNote(i);
+    if (note.getEnd() > rangeStart && note.getOnset() < rangeEnd) {
+      hasNote = true;
+      break;
+    }
+  }
+
+  // ノートがあるなら切り替え不要
+  if (hasNote) return;
+
+  // 最も早いトラックを選ぶための変数
+  var bestGroupRef = null;
+  var bestOffset = Infinity;
+
+  // 他のトラックをチェック
+  for (var t = 0; t < project.getNumTracks(); t++) {
+    var track = project.getTrack(t);
+
+    // 現在のトラックはスキップ
+    if (track === SV.getMainEditor().getCurrentTrack()) continue;
+
+    for (var g = 0; g < track.getNumGroups(); g++) {
+      var groupRef = track.getGroupReference(g);
+      var group = groupRef.getTarget();
+      var offset = groupRef.getTimeOffset();
+
+      // このグループに先読み範囲のノートがあるか？
+      for (var n = 0; n < group.getNumNotes(); n++) {
+        var note = group.getNote(n);
+        var ns = note.getOnset() + offset;
+        var ne = note.getEnd() + offset;
+
+        if (ne > position && ns < position + lookAhead) {
+
+          // offset が最も早いトラックを記録
+          if (offset < bestOffset) {
+            bestOffset = offset;
+            bestGroupRef = groupRef;
+          }
+
+          break; // このグループは候補になったので次へ
+        }
+      }
+    }
+  }
+
+  // 最も早いトラックに切り替え
+  if (bestGroupRef) {
+    SV.getMainEditor().setCurrentGroup(bestGroupRef);
+  }
+}
 
 
 
@@ -363,6 +492,7 @@ function checkPlayhead() {
   pageTurnerArrange();
   noteChecker();
   switchToNextGroupIfNeeded();
+  switchToOtherTrackIfNeeded(); // 
 }
 
 setInterval(updatePeriod, checkPlayhead);
@@ -487,6 +617,16 @@ function getSidePanelSectionState() {
           }
           */
           ]
+      },
+      {
+        "type": "Container",
+        "columns":[
+          {   // トラック自動切り替え
+            "type": "CheckBox",
+            "text": SV.T("Enable Track Auto-Switch"),
+            "value": enableTrackSwitch
+          }
+        ]
       },
       {
       "type": "Container",

@@ -3,13 +3,14 @@
   - 主音推定方式ではなく構成音からスケール候補をピックアップするスケール解析ツール。
     - 曲調から候補を絞り込むことも可能。
   - 構成音が全く同じスケール（平行調やモードなど）はひとまとめにして表示されます。
+    - OctatonicスケールのHalf-Whole（半音-全音）はSV2 Editor のスケールが非対応なので除外しています。
 */
 
 function getClientInfo() {
   return {
     "name": "Scale Analyzer",
     "author": "Ley",
-    "versionNumber": 1.0,
+    "versionNumber": 1.1,
     "minEditorVersion": 131330,
     "type": "SidePanelSection",
     "category": "Ley Script"
@@ -51,8 +52,8 @@ var SCALE_DEFS = [
   { name: "Mixolydian", iv: [0, 2, 4, 5, 7, 9, 10], moods: [3] },
   { name: "Locrian", iv: [0, 1, 3, 5, 6, 8, 10], moods: [4] },
   { name: "Whole Tone", iv: [0, 2, 4, 6, 8, 10], moods: [4] },
-  { name: "Octatonic (H-W)", iv: [0, 1, 3, 4, 6, 7, 9, 10], moods: [4] },
-  { name: "Octatonic (W-H)", iv: [0, 2, 3, 5, 6, 8, 9, 11], moods: [4] },
+  { name: "Octatonic (Half-Whole)", iv: [0, 1, 3, 4, 6, 7, 9, 10], moods: [4] },  // SV2 Editor のスケール設定には含まれていない
+  { name: "Octatonic (Whole-Half)", iv: [0, 2, 3, 5, 6, 8, 9, 11], moods: [4] },
 ];
 
 var NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -83,6 +84,28 @@ var moodCombo = SV.create("WidgetValue");
 moodCombo.setValue(0); 
 var mainEditor = SV.getMainEditor();
 
+
+function normalizeOctatonicName(name) {
+
+    // 非対応スケール（Half–Whole / H-W）は null を返す
+    if (
+        name.indexOf("Half-Whole") !== -1 ||
+        name.indexOf("H-W") !== -1
+    ) {
+        return null;
+    }
+
+    // 対応スケール（Whole–Half / W-H）はキー名を残して Octatonic に統一
+    if (
+        name.indexOf("Whole-Half") !== -1 ||
+        name.indexOf("W-H") !== -1
+    ) {
+        // 例: "E Octatonic (Whole-Half)" → "E Octatonic"
+        return name.replace(/\s*\(.*?\)/, "");
+    }
+
+    return name;
+}
 
 buttonValue.setValueChangeCallback(function(){
   var selection = mainEditor.getSelection();
@@ -132,8 +155,14 @@ buttonValue.setValueChangeCallback(function(){
     var filteredNames = [];
     var scalesInMask = maskGroups[maskStr];
     for (var n = 0; n < scalesInMask.length; n++) {
+        var name = scalesInMask[n].name;
+
+        // 表示から Half–Whole を除外する場合
+        if (!(name = normalizeOctatonicName(name))) continue;
+
         if (selectedMood === 0 || scalesInMask[n].moods.indexOf(selectedMood) !== -1) {
-            filteredNames.push(scalesInMask[n].name);
+            // filteredNames.push(scalesInMask[n].name);  // 元の名前で表示される
+            filteredNames.push(name); // normalizeOctatonicName が存在しない時は何もしない（元の名前）
         }
     }
     

@@ -188,17 +188,25 @@ function hsvToRgb(h, s, v) {
   else if (h < 300){ r = x; g = 0; b = c; }
   else             { r = c; g = 0; b = x; }
 
-var result = {
-  r: clamp255((r + m) * 255),
-  g: clamp255((g + m) * 255),
-  b: clamp255((b + m) * 255)
-};
+  var result = {
+    r: (r + m) * 255,
+    g: (g + m) * 255,
+    b: (b + m) * 255
+  };
 
-return correctRgb(result);
-}
+  return correctRgb(result);
+  }
 
 function clamp255(v) {
   return Math.min(255, Math.max(0, Math.round(v)));
+}
+
+function correctRgb(rgb) {
+  return {
+    r: clamp255(rgb.r),
+    g: clamp255(rgb.g),
+    b: clamp255(rgb.b)
+  };
 }
 
 

@@ -3,10 +3,12 @@ Microsoft Copilotを使って作成したSynthesizer V 2用スクリプト集。
 
 動作確認環境：Windows 11 / Synthesizer V Studio 2 Pro
 
+
 ## 利用規約
 - スクリプトを利用して発生した問題については責任を取れませんので自己責任でご利用ください。
 - 自作発言・再配布禁止。
 - [まいこ氏](https://drive.google.com/drive/folders/13YUromADAUrgNrRqJ8k7qAja627rYjXG?usp=sharing)、[此岸さくら氏](https://drive.google.com/drive/folders/1I3iou07fsYIhmf_ZmFItZBCExF285nRa)のスクリプトを参考にしている為、そちらの利用規約も参照ください。
+
 
 ## 導入方法
 scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダを開く」で表示されたフォルダ）にスクリプト（フォルダごとでもOK）とこのREADME.mdを入れてください。  
@@ -53,6 +55,8 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
 - 次のグループに自動で選択を切り替えます。
     - 選択トラックの再生位置にノートが存在しない場合、他のトラックを探索して自動で切り替えます（ON/OFF 可能）。
 - デフォルト値へのリセット、自動スクロール処理の ON/OFF 切り替えに対応。
+- 各種スクロール設定を簡単に切り替えられるプリセット機能を実装。
+
 
 ### TrackColorChanger_HSV.js
 - スクリプトリストもしくはショートカット実行用HSV版トラックカラー変更スクリプト
@@ -62,6 +66,7 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
         - カラーコードも表示されていますが、スライダーで変更した色は反映されません。
     - トラックカラー変更後も同じトラックを再選択します。
 
+
 ### TrackColorChanger_UI.js
 - スクリプトパネル用HSV版トラックカラー変更スクリプト
     - まいこ氏作スクリプト（TrackColorChanger_MaterialDesign.js, TrackColorChanger_SVColor.js）を元に改変。
@@ -70,23 +75,28 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
         - プリセットセット定義（var presetSets）を編集することでプリセットをカスタマイズ可能。
         - プリセット内容は追加途中です。
 
+
 ### FixPitch_UI.js
 - スクリプトパネル用ピッチ修正コントロールスクリプト
     - 此岸さくら氏作スクリプト（Fix Pitch.lua）とまいこ氏作スクリプト（SelectPlayPosiNote.js）を元に改変。
     - ピッチコントロール生成間隔と開始オフセットをスライダーで調整できるようにしたもの。
         - 再生位置のノートを取得する機能と選択ノートのピッチコントロールを削除する機能も含まれています。
 
+
 ### SelectNotesBefore.js
 - スクリプトリストもしくはショートカット実行用前方ノートを全選択するノート選択スクリプト
     - 選択中のノートを基準に、そのノート自身と前方のノートをすべて選択します。
+
 
 ### SelectNotesAfter.js
 - スクリプトリストもしくはショートカット実行用後方ノートを全選択するノート選択スクリプト
     選択中のノートを基準に、そのノート自身と後方のノートをすべて選択します。
 
+
 ### SelectNotesByLyrics.js
 - スクリプトリストもしくはショートカット実行用指定歌詞を全選択するノート選択スクリプト
     - 選択中のグループもしくはノートの選択範囲の中から、指定した歌詞を検索して選択します。
+
 
 ### SelectNotes_UI.js
 - スクリプトパネル用ノート選択スクリプト（統合版）
@@ -96,9 +106,11 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
         - 指定範囲を選択: 選択ノートと再生バーの位置を基準に、その2点の間にあるノートをすべて選択する。
         - 歌詞で選択: 入力した歌詞と一致するノートをすべて選択する。
 
+
 ### SelectNotesBetween.js
 - スクリプトリストもしくはショートカット実行用指定範囲のノートを全選択するノート選択スクリプト。
     - 選択ノートと再生バーの位置を基準に、その2点の間にあるノートをすべて選択します。
+
 
 ### ScaleAnalyzer.js
 - スクリプトパネル用スケール解析スクリプト
@@ -108,7 +120,13 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
         - OctatonicスケールのHalf-Whole（半音-全音）はSV2 Editor のスケール設定が非対応なので除外しています。
 
 
+
 ## 更新履歴
+### 2026-03-17
+- ScrollSettings_UI.js を更新。
+    - プリセット切り替え機能の実装。
+    - 再生時の挙動が安定するように改善。
+
 ### 2026-03-16
 - TrackColorChanger_HSV.js と TrackColorChanger_UI.js を更新。
     - RGB↔HSV変換処理の数値ズレを緩和。
@@ -117,7 +135,6 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
 - ScrollSettings_UI.js を更新。
     - グループ内にノートが存在しない場合、再生位置にノートがある別トラックのグループへ切り替える機能を追加。
     - 縦スクロール時の再生中ノートが画面外に出てしまう場合は緊急ジャンプで表示位置を調整するように変更。
-
 
 ### 2026-02-21
 - SelectNotesBefore.js と SelectNotesAfter.js と SelectNotesByLyrics.js と SelectNotes_UI.js を追加。

@@ -9,14 +9,17 @@
     - 選択トラックの再生位置にノートが存在しない場合、他のトラックを探索して自動で切り替えます（ON/OFF 可能）。
     - 対象が複数存在する場合は、対象グループの始点が最も早いトラックに切り替わります。
 - デフォルト値へのリセット、スクロール処理の ON/OFF 切り替え可能です。
-- コードには残っていますがプリセット機能は動きません（UIにも表示してません）。
+- プリセット機能を実装。var presets を編集することで自由にプリセット登録できます。
+    - プリセット機能が不要の場合はvar enablePresetUI を false に書き換えてください。
 */
+
+var enablePresetUI = true;   // ← false にするとプリセットUIが非表示になる
 
 function getClientInfo() {
   return {
     "name" : "Scroll Settings UI",
     "author" : "Ley", 
-    "versionNumber" : 1.3,
+    "versionNumber" : 1.4,
     "minEditorVersion" : 131330,
     "type": "SidePanelSection",
     "category" : "Ley Script"
@@ -66,12 +69,14 @@ var horizontalScrollSpeed = SV.create("WidgetValue");   // 横方向速度
 
 var resetButton = SV.create("WidgetValue");   // リセットボタン
 var presetSelector = SV.create("WidgetValue");  // プリセット選択ボタン
-presetSelector.setValue("Default"); 
+presetSelector.setValue(0); // 0 = Default（初期値）
 
 var enableTrackSwitch = SV.create("WidgetValue");   // トラック切り替え機能
 enableTrackSwitch.setValue(false); // 初期値は自動トラック切り替え無効
 var enableScrollLogic = SV.create("WidgetValue");   // オートスクロール切り替え
 enableScrollLogic.setValue(false); // 初期状態はオートスクロール無効
+
+var wasPlaying = false; // 前フレームの再生状態を保持するフラグ（リセット機能）
 
 // WidgetValues初期化
 lookAheadBars.setValue(2);
@@ -83,48 +88,69 @@ scrollSpeed.setValue(0.4);
 horizontalScrollSpeed.setValue(0.1); // 初期値（ゆっくり）
 
 
-// デフォルト設定
+// デフォルト設定（ボタン操作時）
 var defaultValues = {
-  lookAheadBars: 2,
-  topMargin: 4,
-  bottomMargin: 9,
-  rightMargin: 4,
-  pageTurnOffset: 0,
-  scrollSpeed: 0.4,
-  horizontalScrollSpeed: 0.1,
+  lookAheadBars: 2,             // 先読み
+  topMargin: 4,                 // 上余白
+  bottomMargin: 9,              // 下余白
+  rightMargin: 4,               // 右余白
+  pageTurnOffset: 0,            // 左余白
+  scrollSpeed: 0.4,             // 縦方向速度
+  horizontalScrollSpeed: 0.1,   // 横方向速度
+  enableTrackSwitch: true,      // トラック自動切り替え（true = 有効）
+  enableScrollLogic: true,      // 自動スクロール機能（true = 有効）
 };
 
-// プリセット
+// プリセット（編集して自由に追加・変更可能）
 var presets = {
-  "Preset A": {
+  "Preset A": { // プリセット名
     lookAheadBars: 1,
     topMargin: 2,
     bottomMargin: 6,
     rightMargin: 2,
+    pageTurnOffset: 1,
     horizontalScrollSpeed: 0.2,
-    scrollSpeed: 0.2
-  },
+    scrollSpeed: 0.2,
+    enableTrackSwitch: false,
+    enableScrollLogic: true, 
+  },  
   "Preset B": {
     lookAheadBars: 3,
     topMargin: 6,
     bottomMargin: 12,
     rightMargin: 1,
+    pageTurnOffset: 2,
     horizontalScrollSpeed: 0.3,
-    scrollSpeed: 0.5
+    scrollSpeed: 0.5,
+    enableTrackSwitch: true,
+    enableScrollLogic: false,
   },
   "Preset C": {
     lookAheadBars: 4,
     topMargin: 8,
     bottomMargin: 10,
     rightMargin: 1,
+    pageTurnOffset: 3,
     horizontalScrollSpeed: 0,
-    scrollSpeed: 0.25
-  }
+    scrollSpeed: 0.25,
+    enableTrackSwitch: false,
+    enableScrollLogic: false,
+  }, 
+  // 増やす場合はこの下に追加
 };
+
+// プリセット（choices）用の配列（プリセット選択ラベル+プリセット自動登録）
+var presetList = ["Select Preset"].concat(getPresetNames());  
+
+// プリセット自動生成
+function getPresetNames() {
+  return Object.keys(presets);
+}
 
 
 // 定数
 var updatePeriod = 50; // 50msごとにチェック※ 100msだと先読み小節数への反応が鈍く、20msだと敏感
+var lastPreset = "Select Preset";  // プリセット反映用（初期値）
 var selectHyphen = false;
 var enableAutoNextGroup = true;
 
@@ -138,19 +164,31 @@ resetButton.setValueChangeCallback(function() {
   pageTurnOffset.setValue(defaultValues.pageTurnOffset);
   scrollSpeed.setValue(defaultValues.scrollSpeed);
   horizontalScrollSpeed.setValue(defaultValues.horizontalScrollSpeed);
+  enableTrackSwitch.setValue(defaultValues.enableTrackSwitch);
+  enableScrollLogic.setValue(defaultValues.enableScrollLogic);
 });
 
-// プリセットを選ぶ
-presetSelector.setValueChangeCallback(function(name) {
-  var preset = presets[name];
-  if (!preset) return;
-  lookAheadBars.setValue(preset.lookAheadBars);
-  topMargin.setValue(preset.topMargin);
-  bottomMargin.setValue(preset.bottomMargin);
-  rightMargin.setValue(preset.rightMargin);
-  scrollSpeed.setValue(preset.scrollSpeed);
-});
 
+// プリセット反映用
+function applyPreset(name) {
+    if (name === "Select Preset") {
+        // 案内ラベルなので何もしない
+        return;
+    }
+
+    var preset = presets[name];
+    if (!preset) return;
+
+    lookAheadBars.setValue(preset.lookAheadBars);
+    topMargin.setValue(preset.topMargin);
+    bottomMargin.setValue(preset.bottomMargin);
+    rightMargin.setValue(preset.rightMargin);
+    pageTurnOffset.setValue(preset.pageTurnOffset);
+    scrollSpeed.setValue(preset.scrollSpeed);
+    horizontalScrollSpeed.setValue(preset.horizontalScrollSpeed);
+    enableTrackSwitch.setValue(preset.enableTrackSwitch);
+    enableScrollLogic.setValue(preset.enableScrollLogic);
+}
 
 // 再生監視ループ（即実行せず一定間隔でcallback）
 function setInterval(t, callback) {
@@ -475,6 +513,15 @@ function switchToOtherTrackIfNeeded() {
   }
 }
 
+// 内部状態を初期化
+function resetInternalState() {
+    lastCenter = null;
+    justJumped = false;
+    lastTrackIndex = null;
+    lastGroupIndex = null;
+    lastScrollPos = null;
+    // 必要なら他の内部変数もここで初期化
+}
 
 
 var verticalScroll = makeVerticalScroll(SV.getMainEditor().getNavigation());  // 縦スクロール
@@ -482,12 +529,37 @@ var pageTurnerMain = makePageTurner(SV.getMainEditor().getNavigation());    // �
 var pageTurnerArrange = makePageTurner(SV.getArrangement().getNavigation());  // 横スクロール（トラック）
 var noteChecker = makeNoteChecker();  // 再生位置のノートを選択
 
+
 // スクリプト実行処理
 function checkPlayhead() {
+  // プリセット変化監視
+  var index = presetSelector.getValue();   // 0,1,2,3...
+  var name = presetList[index];            // "Select Preset" or "Preset A" etc.
+
+  if (name !== lastPreset) {
+      applyPreset(name);
+      lastPreset = name;
+  }
+
+  // オートスクロール実行確認
   if (!enableScrollLogic.getValue()) return; // チェックが外れていたら何もしない
 
   var playback = SV.getPlayback();
   if (playback.getStatus() === "stopped") return;
+
+  // 内部リセット
+  var isPlaying = (playback.getStatus() === "playing");
+
+  // 再生開始時に初期化
+  if (!wasPlaying && isPlaying) {
+      resetInternalState();
+  }
+  // 再生終了時に初期化
+  if (wasPlaying && !isPlaying) {
+    resetInternalState();
+  }
+  wasPlaying = isPlaying;
+
   verticalScroll();
   pageTurnerMain();
   pageTurnerArrange();
@@ -498,12 +570,16 @@ function checkPlayhead() {
 
 setInterval(updatePeriod, checkPlayhead);
 
+
 // スクリプトパネルUI
 function getSidePanelSectionState() {
+  var rows = [ 
+    { type: "Label", text: SV.T("Vertical Scroll Margin") },
+  /*
   return {
     title: SV.T("Scroll Settings"),
     rows: [
-      { type: "Label", text: SV.T("Vertical Scroll Margin") },
+      { type: "Label", text: SV.T("Vertical Scroll Margin") },  */
       {  // 縦スクロール設定
         type: "Container",
         columns: [
@@ -598,6 +674,73 @@ function getSidePanelSectionState() {
         ]
       },
       // { type: "Label", text: SV.T("Preset Management") },
+
+  ];
+
+  // プリセットUIを使う場合だけ表示
+  if (enablePresetUI) {
+    rows.push({
+      type: "Container",
+      columns: [
+        {
+          type: "Button",
+          text: SV.T("Reset to Default"),
+          value: resetButton,
+          width: 0.5
+        },
+        {
+          type: "ComboBox",
+          text: SV.T("Preset"),
+          value: presetSelector,
+          choices: presetList,
+          width: 0.5
+        }
+      ]
+    });
+  } else {
+    // プリセットUIを使わない場合は Reset ボタンのみ
+    rows.push({
+      type: "Container",
+      columns: [
+        {
+          type: "Button",
+          text: SV.T("Reset to Default"),
+          value: resetButton,
+          width: 1.0
+        }
+      ]
+    });
+  }
+
+  // 残りのチェックボックス
+  rows.push({
+    type: "Container",
+    columns: [
+      {
+        type: "CheckBox",
+        text: SV.T("Enable Track Auto-Switch"),
+        value: enableTrackSwitch
+      }
+    ]
+  });
+
+  rows.push({
+    type: "Container",
+    columns: [
+      {
+        type: "CheckBox",
+        text: SV.T("Enable Scroll Logic"),
+        value: enableScrollLogic
+      }
+    ]
+  });
+
+  return {
+    title: SV.T("Scroll Settings"),
+    rows: rows
+  };
+}
+/*
       {
         type: "Container",
         columns: [
@@ -606,17 +749,16 @@ function getSidePanelSectionState() {
             text: SV.T("Reset to Default"),
             value: resetButton,
             width: 0.5
-          }
-          /*
-          ,
-          {
+          },
+          
+          { // プリセット選択
             type: "ComboBox",
             text: SV.T("Preset"),
             value: presetSelector,
-            options: ["Default", "Preset A", "Preset B", "Preset C"], // ← 手動で追加
+            choices: presetList,  // デフォルト+プリセット自動登録
             width: 0.5
           }
-          */
+          
           ]
       },
       {
@@ -642,3 +784,4 @@ function getSidePanelSectionState() {
   };
 }
 
+*/

@@ -17,12 +17,12 @@ var enablePresetUI = true;   // ← false にするとプリセットUIが非表
 
 function getClientInfo() {
   return {
-    "name" : "Scroll Settings UI",
-    "author" : "Ley", 
-    "versionNumber" : 1.4,
-    "minEditorVersion" : 131330,
+    "name": "Scroll Settings UI",
+    "author": "Ley",
+    "versionNumber": 1.5,
+    "minEditorVersion": 131330,
     "type": "SidePanelSection",
-    "category" : "Ley Script"
+    "category": "Ley Script"
   };
 }
 
@@ -40,7 +40,7 @@ function getTranslations(langCode) {
       ["Horizontal Scroll Settings", "横スクロール設定"],
       ["Right Margin", "右余白"],
       ["Page Turn Offset", "左余白"],
-      ["Horizontal Scroll Speed","横方向"],
+      ["Horizontal Scroll Speed", "横方向"],
       ["Scroll Speed", "縦方向"],
       ["Scroll Speed Setting", "スクロール速度"],
       ["Preset Management", "プリセット管理"],
@@ -112,8 +112,8 @@ var presets = {
     horizontalScrollSpeed: 0.2,
     scrollSpeed: 0.2,
     enableTrackSwitch: false,
-    enableScrollLogic: true, 
-  },  
+    enableScrollLogic: true,
+  },
   "Preset B": {
     lookAheadBars: 3,
     topMargin: 6,
@@ -135,16 +135,16 @@ var presets = {
     scrollSpeed: 0.25,
     enableTrackSwitch: false,
     enableScrollLogic: false,
-  }, 
+  },
   // 増やす場合はこの下に追加
 };
 
 // プリセット（choices）用の配列（プリセット選択ラベル+プリセット自動登録）
-var presetList = ["Select Preset"].concat(getPresetNames());  
+var presetList = ["Select Preset"].concat(getPresetNames());
 
 // プリセット自動生成
 function getPresetNames() {
-  return Object.keys(presets);
+  return Object.keys(presets);  // プリセット名を取得
 }
 
 
@@ -156,7 +156,7 @@ var enableAutoNextGroup = true;
 
 
 // デフォルトに戻す
-resetButton.setValueChangeCallback(function() {
+resetButton.setValueChangeCallback(function () {
   lookAheadBars.setValue(defaultValues.lookAheadBars);
   topMargin.setValue(defaultValues.topMargin);
   bottomMargin.setValue(defaultValues.bottomMargin);
@@ -171,28 +171,28 @@ resetButton.setValueChangeCallback(function() {
 
 // プリセット反映用
 function applyPreset(name) {
-    if (name === "Select Preset") {
-        // 案内ラベルなので何もしない
-        return;
-    }
+  if (name === "Select Preset") {
+    // 案内ラベルなので何もしない
+    return;
+  }
+  // プリセット名からプリセットを取得
+  var preset = presets[name];
+  if (!preset) return;
 
-    var preset = presets[name];
-    if (!preset) return;
-
-    lookAheadBars.setValue(preset.lookAheadBars);
-    topMargin.setValue(preset.topMargin);
-    bottomMargin.setValue(preset.bottomMargin);
-    rightMargin.setValue(preset.rightMargin);
-    pageTurnOffset.setValue(preset.pageTurnOffset);
-    scrollSpeed.setValue(preset.scrollSpeed);
-    horizontalScrollSpeed.setValue(preset.horizontalScrollSpeed);
-    enableTrackSwitch.setValue(preset.enableTrackSwitch);
-    enableScrollLogic.setValue(preset.enableScrollLogic);
+  lookAheadBars.setValue(preset.lookAheadBars);
+  topMargin.setValue(preset.topMargin);
+  bottomMargin.setValue(preset.bottomMargin);
+  rightMargin.setValue(preset.rightMargin);
+  pageTurnOffset.setValue(preset.pageTurnOffset);
+  scrollSpeed.setValue(preset.scrollSpeed);
+  horizontalScrollSpeed.setValue(preset.horizontalScrollSpeed);
+  enableTrackSwitch.setValue(preset.enableTrackSwitch);
+  enableScrollLogic.setValue(preset.enableScrollLogic);
 }
 
 // 再生監視ループ（即実行せず一定間隔でcallback）
 function setInterval(t, callback) {
-  SV.setTimeout(t, function() {
+  SV.setTimeout(t, function () {
     callback();
     setInterval(t, callback);
   });
@@ -200,10 +200,10 @@ function setInterval(t, callback) {
 
 // 旧再生監視ループ
 // function setInterval(t, callback) {
-  // callback();
-  // SV.setTimeout(t, function() {
-    // setInterval(t, callback);
-  // });
+// callback();
+// SV.setTimeout(t, function() {
+// setInterval(t, callback);
+// });
 // }
 
 // 横スクロール処理
@@ -213,7 +213,7 @@ function makePageTurner(coordSystem) {
   var isPageTurning = false;
   var targetPositionLeft = 0;
 
-      return function() {
+  return function () {
     var seconds = playback.getPlayhead();
     if (seconds === null) return;
     var position = timeAxis.getBlickFromSeconds(seconds);
@@ -232,7 +232,7 @@ function makePageTurner(coordSystem) {
       isPageTurning = true;
       // targetPositionLeft = viewRange[1]; // 左端まで固定
       // ページ送り後の左端位置を調整する
-      var offset = pageTurnOffset.getValue() * SV.QUARTER * 4; 
+      var offset = pageTurnOffset.getValue() * SV.QUARTER * 4;
       // （pageTurnOffset は「小節数」なので ×4 で四分音符数に変換）
       targetPositionLeft = viewRange[1] - offset;
 
@@ -250,7 +250,7 @@ function makeVerticalScroll(coordSystem) {
   var timeAxis = SV.getProject().getTimeAxis();
   var uuid, groupIndex, lastCenter = null, scrollTarget = null;
 
-  return function() {
+  return function () {
     var seconds = playback.getPlayhead();
     if (seconds === null) return;
     var position = timeAxis.getBlickFromSeconds(seconds);
@@ -299,12 +299,12 @@ function makeVerticalScroll(coordSystem) {
     else if (needScrollUp) scrollTarget = center + scrollSpeed.getValue();  // 縦スクロール速度
     else if (needScrollDown) scrollTarget = center - scrollSpeed.getValue();
 
-  /*
-    var smoothing = 0.1;
-    if (lastCenter === null) lastCenter = center;
-    lastCenter = lastCenter * (1 - smoothing) + scrollTarget * smoothing;
-    coordSystem.setValueCenter(lastCenter);
-  */
+    /*
+      var smoothing = 0.1;
+      if (lastCenter === null) lastCenter = center;
+      lastCenter = lastCenter * (1 - smoothing) + scrollTarget * smoothing;
+      coordSystem.setValueCenter(lastCenter);
+    */
 
     // 再生バーの位置に少しだけ先読みを足す
     var early = SV.QUARTER * 0.5;  // ← ここが「どれくらい手前でジャンプするか」（数値が大きいと早く、小さいとギリギリ）
@@ -313,35 +313,35 @@ function makeVerticalScroll(coordSystem) {
     var activeNote = null;
 
     for (var i = 0; i < group.getNumNotes(); i++) {
-        var note = group.getNote(i);
-        if (note.getOnset() <= playheadInGroup && playheadInGroup <= note.getEnd()) {
-            activeNote = note;
-            break;
-        }
+      var note = group.getNote(i);
+      if (note.getOnset() <= playheadInGroup && playheadInGroup <= note.getEnd()) {
+        activeNote = note;
+        break;
+      }
     }
 
     if (activeNote) {
-        var p = activeNote.getPitch();
+      var p = activeNote.getPitch();
 
-        var screenTop = viewRange[1];
-        var screenBottom = viewRange[0];
+      var screenTop = viewRange[1];
+      var screenBottom = viewRange[0];
 
-        if (p > screenTop || p < screenBottom) {
+      if (p > screenTop || p < screenBottom) {
 
-            var targetCenter = scrollTarget * 0.8 + p * 0.2;
+        var targetCenter = scrollTarget * 0.8 + p * 0.2;
 
-            coordSystem.setValueCenter(targetCenter);
-            lastCenter = targetCenter;
+        coordSystem.setValueCenter(targetCenter);
+        lastCenter = targetCenter;
 
-            justJumped = true;  // このフレームはスムーズスクロール禁止
-            return;
-        }
+        justJumped = true;  // このフレームはスムーズスクロール禁止
+        return;
+      }
     }
 
     // ジャンプ直後のフレームはスムーズスクロールしない
     if (justJumped) {
-        justJumped = false;
-        return;
+      justJumped = false;
+      return;
     }
 
     // 通常のスムーズスクロール
@@ -358,43 +358,52 @@ function makeNoteChecker() {
   var playback = SV.getPlayback();
   var timeAxis = SV.getProject().getTimeAxis();
   var selection = SV.getMainEditor().getSelection();
-  var uuid, groupIndex, skipNote = 0;
+  var uuid, groupIndex;
 
-  return function() {
+  return function () {
     var seconds = playback.getPlayhead();
     if (seconds === null) return;
     var position = timeAxis.getBlickFromSeconds(seconds);
     var groupReference = SV.getMainEditor().getCurrentGroup();
+    if (!groupReference) return;
     var group = groupReference.getTarget();
     if (!group) return;
 
     if (group.getUUID() !== uuid || groupReference.getIndexInParent() !== groupIndex) {
       uuid = group.getUUID();
       groupIndex = groupReference.getIndexInParent();
-      skipNote = 0;
     }
 
     var offset = timeAxis.getBlickFromSeconds(updatePeriod / 1000);
     var target = position - groupReference.getTimeOffset() + offset;
 
-    for (var i = skipNote; i < group.getNumNotes(); i++) {
+    var activeNote = null;
+    for (var i = 0; i < group.getNumNotes(); i++) {
       var note = group.getNote(i);
-      if (target < note.getEnd()) {
+      if (note.getOnset() <= target && target < note.getEnd()) {
         var lyrics = note.getLyrics();
-        // if (!selectHyphen && (lyrics === "-" || lyrics === "+" || lyrics === "br")) break;
-        if (!selectHyphen && (lyrics === "br")) break;
-        if (note.getOnset() < target) {
-          selection.clearNotes();
-          selection.selectNote(note);
-          skipNote = i + 1;
-          break;
+        if (!selectHyphen && (lyrics === "br")) {
+          continue; // brの場合はスキップし、次のノートを見る必要はないがここで探索終了
         }
-        skipNote = i;
+        activeNote = note;
         break;
+      } else if (note.getOnset() > target) {
+        break; // 以降のノートはすべて target より未来なので探索終了
+      }
+    }
+
+    if (activeNote) {
+      var selNotes = selection.getSelectedNotes();
+      var alreadySelected = (selNotes.length === 1 && selNotes[0].getIndexInParent() === activeNote.getIndexInParent());
+      // 既にそのノートが選択されている場合は再選択しない（イベント競合防止）
+      if (!alreadySelected) {
+        selection.clearNotes();
+        selection.selectNote(activeNote);
       }
     }
   };
 }
+
 
 // グループ自動切り替え
 function switchToNextGroupIfNeeded() {
@@ -417,6 +426,7 @@ function switchToNextGroupIfNeeded() {
   }
   var currentEnd = groupRef.getTimeOffset() + groupEnd;
 
+  // 再生位置が現在のグループの終端を超えたら、次のグループへ移動
   if (position > currentEnd) {
     var targetUUID = group.getUUID();
     var project = SV.getProject();
@@ -515,12 +525,12 @@ function switchToOtherTrackIfNeeded() {
 
 // 内部状態を初期化
 function resetInternalState() {
-    lastCenter = null;
-    justJumped = false;
-    lastTrackIndex = null;
-    lastGroupIndex = null;
-    lastScrollPos = null;
-    // 必要なら他の内部変数もここで初期化
+  lastCenter = null;
+  justJumped = false;
+  lastTrackIndex = null;
+  lastGroupIndex = null;
+  lastScrollPos = null;
+  // 必要なら他の内部変数もここで初期化
 }
 
 
@@ -537,8 +547,8 @@ function checkPlayhead() {
   var name = presetList[index];            // "Select Preset" or "Preset A" etc.
 
   if (name !== lastPreset) {
-      applyPreset(name);
-      lastPreset = name;
+    applyPreset(name);
+    lastPreset = name;
   }
 
   // オートスクロール実行確認
@@ -552,7 +562,7 @@ function checkPlayhead() {
 
   // 再生開始時に初期化
   if (!wasPlaying && isPlaying) {
-      resetInternalState();
+    resetInternalState();
   }
   // 再生終了時に初期化
   if (wasPlaying && !isPlaying) {
@@ -565,7 +575,7 @@ function checkPlayhead() {
   pageTurnerArrange();
   noteChecker();
   switchToNextGroupIfNeeded();
-  switchToOtherTrackIfNeeded(); // 
+  switchToOtherTrackIfNeeded();
 }
 
 setInterval(updatePeriod, checkPlayhead);
@@ -573,107 +583,107 @@ setInterval(updatePeriod, checkPlayhead);
 
 // スクリプトパネルUI
 function getSidePanelSectionState() {
-  var rows = [ 
+  var rows = [
     { type: "Label", text: SV.T("Vertical Scroll Margin") },
-  /*
-  return {
-    title: SV.T("Scroll Settings"),
-    rows: [
-      { type: "Label", text: SV.T("Vertical Scroll Margin") },  */
-      {  // 縦スクロール設定
-        type: "Container",
-        columns: [
-          {   // 上余白
-            type: "Slider",
-            text: SV.T("Top Margin"),
-            format: "%1.0f", // 表示は小数点なし(0)
-            minValue: 0,
-            maxValue: 20,
-            interval: 1,
-            value: topMargin,
-            width: 0.5
-          },
-          {   // 下余白
-            type: "Slider",
-            text: SV.T("Bottom Margin"),
-            format: "%1.0f",
-            minValue: 0,
-            maxValue: 20,
-            interval: 1,
-            value: bottomMargin,
-            width: 0.5
-          }
-        ]
-      },
-      // { type: "Label", text: SV.T("Lookahead Bars") },
-      {
-        type: "Container",
-        columns: [
-          {   // 先読み設定
-            type: "Slider",
-            text: SV.T("Lookahead Bars"),
-            format: "%1.0f", 
-            minValue: 1,
-            maxValue: 5,
-            interval: 1,
-            value: lookAheadBars,
-            width: 1.0
-          }
-        ]
-      },
-      { type: "Label", text: SV.T("Horizontal Scroll Settings") },
-      {  // 横スクロール設定
-        type: "Container",
-        columns: [
-          {   // 左余白
-            type: "Slider",
-            text: SV.T("Page Turn Offset"),
-            format: "%1.1f",  // 数字は小数点以下有り(0.1)
-            minValue: 0,
-            maxValue: 4,   // 数字が大きいと中央に寄る
-            interval: 0.5,
-            value: pageTurnOffset,
-            width: 0.5
-          },
-          {   // 右余白
-            type: "Slider",
-            text: SV.T("Right Margin"),
-            format: "%1.0f bar",
-            minValue: 1,
-            maxValue: 16,
-            interval: 1,
-            value: rightMargin,
-            width: 0.5
-          }
-        ]
-      },
-      { type: "Label", text: SV.T("Scroll Speed Setting") },
-      {   // スクロール速度設定
-        type: "Container",
-        columns: [
-          {   // 縦スクロール速度
-            type: "Slider",
-            text: SV.T("Scroll Speed"),
-            format: "%1.1f",
-            minValue: 0.1,
-            maxValue: 1.0,
-            interval: 0.1,
-            value: scrollSpeed,
-            width: 0.5
-          },
-          {   // 横スクロール速度
-            type: "Slider",
-            text: SV.T("Horizontal Scroll Speed"),
-            format: "%1.2f",  // 数字は小数点以下有り(0.02)
-            minValue: 0.02, // 0.01だと挙動が少しおかしい
-            maxValue: 0.25, // これ以上大きいと即ページめくり挙動に近い
-            interval: 0.01,
-            value: horizontalScrollSpeed,
-            width: 0.5
-          }
-        ]
-      },
-      // { type: "Label", text: SV.T("Preset Management") },
+    /*
+    return {
+      title: SV.T("Scroll Settings"),
+      rows: [
+        { type: "Label", text: SV.T("Vertical Scroll Margin") },  */
+    {  // 縦スクロール設定
+      type: "Container",
+      columns: [
+        {   // 上余白
+          type: "Slider",
+          text: SV.T("Top Margin"),
+          format: "%1.0f", // 表示は小数点なし(0)
+          minValue: 0,
+          maxValue: 20,
+          interval: 1,
+          value: topMargin,
+          width: 0.5
+        },
+        {   // 下余白
+          type: "Slider",
+          text: SV.T("Bottom Margin"),
+          format: "%1.0f",
+          minValue: 0,
+          maxValue: 20,
+          interval: 1,
+          value: bottomMargin,
+          width: 0.5
+        }
+      ]
+    },
+    // { type: "Label", text: SV.T("Lookahead Bars") },
+    {
+      type: "Container",
+      columns: [
+        {   // 先読み設定
+          type: "Slider",
+          text: SV.T("Lookahead Bars"),
+          format: "%1.0f",
+          minValue: 1,
+          maxValue: 5,
+          interval: 1,
+          value: lookAheadBars,
+          width: 1.0
+        }
+      ]
+    },
+    { type: "Label", text: SV.T("Horizontal Scroll Settings") },
+    {  // 横スクロール設定
+      type: "Container",
+      columns: [
+        {   // 左余白
+          type: "Slider",
+          text: SV.T("Page Turn Offset"),
+          format: "%1.1f",  // 数字は小数点以下有り(0.1)
+          minValue: 0,
+          maxValue: 4,   // 数字が大きいと中央に寄る
+          interval: 0.5,
+          value: pageTurnOffset,
+          width: 0.5
+        },
+        {   // 右余白
+          type: "Slider",
+          text: SV.T("Right Margin"),
+          format: "%1.0f bar",
+          minValue: 1,
+          maxValue: 16,
+          interval: 1,
+          value: rightMargin,
+          width: 0.5
+        }
+      ]
+    },
+    { type: "Label", text: SV.T("Scroll Speed Setting") },
+    {   // スクロール速度設定
+      type: "Container",
+      columns: [
+        {   // 縦スクロール速度
+          type: "Slider",
+          text: SV.T("Scroll Speed"),
+          format: "%1.1f",
+          minValue: 0.1,
+          maxValue: 1.0,
+          interval: 0.1,
+          value: scrollSpeed,
+          width: 0.5
+        },
+        {   // 横スクロール速度
+          type: "Slider",
+          text: SV.T("Horizontal Scroll Speed"),
+          format: "%1.2f",  // 数字は小数点以下有り(0.02)
+          minValue: 0.02, // 0.01だと挙動が少しおかしい
+          maxValue: 0.25, // これ以上大きいと即ページめくり挙動に近い
+          interval: 0.01,
+          value: horizontalScrollSpeed,
+          width: 0.5
+        }
+      ]
+    },
+    // { type: "Label", text: SV.T("Preset Management") },
 
   ];
 

@@ -6,6 +6,8 @@
     - OctatonicスケールのHalf-Whole（半音-全音）はSV2 Editor のスケール設定が非対応なので除外しています。
   - 一度解析したスケールはプロジェクトファイルに保存されるのでグループ別に解析結果を保持できます。
     - 此岸さくら氏作スクリプト（ParameterBox.js）のScriptData管理方式を参考に実装。
+    - Clear ボタンで選択グループの解析結果を削除できます。
+    - All Clear ボタンで全グループの解析結果を削除できます。
 */
 
 function getClientInfo() {
@@ -31,7 +33,7 @@ function getTranslations(langCode) {
       ["Jazzy / Groovy", "おしゃれ / 都会的"], // moods = 3
       ["Exotic / Dramatic", "異国感 / 劇的"], // moods = 4
       ["No notes found.", "ノートが見つかりません。"],
-      ["Too few notes selected. Please select at least 3 notes.", "選択ノート数が少なすぎます。3つ以上選択してください。"], // 翻訳文に\nは使えない？
+      ["⚠ Too few notes selected. Please select at least 3 notes.", "⚠ 選択ノート数が少なすぎます。3つ以上選択してください。"], // 翻訳文に\nは使えない？
       ["Match:", "適合率:"],
       ["Note Analysis", "ノート解析"],
       ["Bars", "小節"],
@@ -151,7 +153,7 @@ buttonValue.setValueChangeCallback(function () {
     }
     // 警告文
     if (filteredNotes.length < 3) {
-      textValue.setValue(SV.T("Too few notes selected. Please select at least 3 notes."));
+      textValue.setValue(SV.T("⚠ Too few notes selected. Please select at least 3 notes."));
       return;
     }
     // for (var i = 0; i < selectedNotes.length; i++) sourceNotes.push(selectedNotes[i]);   // br も含まれる
@@ -248,7 +250,7 @@ buttonValue.setValueChangeCallback(function () {
     return bBitCount - aBitCount;
   });
 
-  // --- 表示用のテキスト組み立て処理を改修 ---
+  // 表示用のテキスト組み立て処理
   var outputText = "";
 
   // スコア（小数点第1位まで）をキーにしてグループ化
@@ -326,10 +328,10 @@ buttonValue.setValueChangeCallback(function () {
     header = "";  // Group解析のヘッダー情報はなし
   }
 
-  // 保存（テキスト＋JSON＋ヘッダー）
-  nowGroupRef.setScriptData("scaleAnalyzer_text", outputText.trim());
-  nowGroupRef.setScriptData("scaleAnalyzer_raw", JSON.stringify(results));
-  nowGroupRef.setScriptData("scaleAnalyzer_header", header);
+  // 保存
+  nowGroupRef.setScriptData("scaleAnalyzer_text", outputText.trim());  // 解析結果のUI表示用データ
+  nowGroupRef.setScriptData("scaleAnalyzer_raw", JSON.stringify(results));  // 解析結果のJSONデータ（整形前のデータ）
+  nowGroupRef.setScriptData("scaleAnalyzer_header", header);  // ヘッダー情報
 
   // mood の選択状態を保存
   nowGroupRef.setScriptData("scaleAnalyzer_mood", selectedMood);
@@ -372,6 +374,27 @@ function rebuildTextFromRaw(rawJson, mood) {
   }
 
   return output.trim();
+}
+
+
+// プロジェクト内の全グループの解析データ数をカウント
+function countProjectScaleData() {
+  var project = SV.getProject();
+  var numTracks = project.getNumTracks();
+  var count = 0;
+
+  for (var t = 0; t < numTracks; t++) {
+    var track = project.getTrack(t);
+    var numGroups = track.getNumGroups();
+
+    for (var g = 0; g < numGroups; g++) {
+      var groupRef = track.getGroupReference(g);
+      if (groupRef.getScriptData("scaleAnalyzer_raw")) {
+        count++;
+      }
+    }
+  }
+  return count;
 }
 
 // クリアボタンが押されたときの処理
@@ -470,7 +493,6 @@ mainSelection.registerClearCallback(function (type) {
 function getSidePanelSectionState() {
   var nowGroupRef = mainEditor.getCurrentGroup();
   var savedText = nowGroupRef.getScriptData("scaleAnalyzer_text");
-  var savedRaw = nowGroupRef.getScriptData("scaleAnalyzer_raw");
   var savedHeader = nowGroupRef.getScriptData("scaleAnalyzer_header");
   // mood の選択状態を復元
   var savedMood = nowGroupRef.getScriptData("scaleAnalyzer_mood");
@@ -505,7 +527,7 @@ function getSidePanelSectionState() {
           { // スケール解析結果の表示
             "type": "TextArea",
             "value": textValue,
-            "height": 280,
+            "height": savedText ? 280 : 80,  // 解析結果があるときは大きく、ないときは小さく
           }
         ]
       },
@@ -522,25 +544,80 @@ function getSidePanelSectionState() {
     ]
   };
 
-  // saved がある時だけ Clear / All Clear ボタンを追加
-  if (savedText) {
-    section.rows.push({
-      "type": "Container",
-      "columns": [
-        {
-          "type": "Button",
-          "text": "Clear",
-          "value": clearButtonValue,
-          "width": 0.5
-        },
-        {
-          "type": "Button",
-          "text": "All Clear",
-          "value": allClearButtonValue,
-          "width": 0.5
-        },
-      ]
-    });
+  // Clear / All Clear ボタン表示ロジック
+  var selectedHasData = !!savedText;
+  var projectCount = countProjectScaleData();
+
+  // 解析データ 0 件 → 何も表示しない
+  if (projectCount === 0) {
+  }
+
+  // 解析データ 1 件
+  else if (projectCount === 1) {
+    if (selectedHasData) {
+      // 唯一のデータが選択グループにある → Clear のみ
+      section.rows.push({
+        "type": "Container",
+        "columns": [
+          {
+            "type": "Button",
+            "text": "Clear",
+            "value": clearButtonValue,
+            "width": 1.0
+          }
+        ]
+      });
+    } else {
+      // 唯一のデータが別グループにある → All Clear のみ
+      section.rows.push({
+        "type": "Container",
+        "columns": [
+          {
+            "type": "Button",
+            "text": "All Clear",
+            "value": allClearButtonValue,
+            "width": 1.0
+          }
+        ]
+      });
+    }
+  }
+
+  // 解析データ 2 件以上
+  else {
+    if (selectedHasData) {
+      // 選択グループにデータあり → Clear + All Clear
+      section.rows.push({
+        "type": "Container",
+        "columns": [
+          {
+            "type": "Button",
+            "text": "Clear",
+            "value": clearButtonValue,
+            "width": 0.5
+          },
+          {
+            "type": "Button",
+            "text": "All Clear",
+            "value": allClearButtonValue,
+            "width": 0.5
+          }
+        ]
+      });
+    } else {
+      // 選択グループにデータなし → All Clear のみ
+      section.rows.push({
+        "type": "Container",
+        "columns": [
+          {
+            "type": "Button",
+            "text": "All Clear",
+            "value": allClearButtonValue,
+            "width": 1.0
+          }
+        ]
+      });
+    }
   }
 
   // 初期表示

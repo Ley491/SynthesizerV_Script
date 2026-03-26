@@ -165,6 +165,7 @@ var enableAutoNextGroup = true;
 var resetters = []; // スクロール処理のリセット用関数を格納する配列
 var forceTrackSearch = false; // 強制的にトラックを検索するフラグ
 var trackPriority = 0;  // トラックの優先度初期値
+var mutedMap = {};      // 全トラック・全グループのミュート状態を保持するマップ
 
 
 // デフォルトに戻す
@@ -490,7 +491,7 @@ function switchToNextGroupIfNeeded() {
 
   var lookAhead = SV.QUARTER * 4 * lookAheadBars.getValue();
 
-  // グループのノートが占めている時間範囲を取得する便利関数
+  // グループのノートが占めている時間範囲を取得する
   function getGroupRange(gRef) {
     var g = gRef.getTarget();
     if (!g || g.getNumNotes() === 0) return null;
@@ -517,6 +518,7 @@ function switchToNextGroupIfNeeded() {
   // 2. 現在のグループの範囲外なので、カレントトラック内の他の最適なグループを探す
   var project = SV.getProject();
   var currentTrack = null;
+  var currentTrackIndex = -1;  // 現在のトラック番号を記録
   var targetUUID = currentGroup.getUUID();
   // 今操作しているトラックを見つける
   for (var t = 0; t < project.getNumTracks(); t++) {
@@ -526,6 +528,7 @@ function switchToNextGroupIfNeeded() {
       var target = g.getTarget();
       if (target && target.getUUID() === targetUUID) {
         currentTrack = track;
+        currentTrackIndex = t;  // 現在のトラック番号を記録
         break;
       }
     }
@@ -538,6 +541,8 @@ function switchToNextGroupIfNeeded() {
 
   // トラック内の全グループを走査し、再生バー位置に一番ふさわしいグループを見つける
   for (var i = 0; i < currentTrack.getNumGroups(); i++) {
+    // 事前検知でミュートされている場合はスキップ
+    if (mutedMap[currentTrackIndex + ":" + i]) continue;
     var groupRef = currentTrack.getGroupReference(i);
     var range = getGroupRange(groupRef);
     if (!range) continue; // ノートがない空のグループは無視
@@ -627,6 +632,7 @@ function switchToOtherTrackIfNeeded() {
 
   var position = timeAxis.getBlickFromSeconds(seconds);
   var project = SV.getProject();
+  var currentTrack = SV.getMainEditor().getCurrentTrack();
   var currentGroupRef = SV.getMainEditor().getCurrentGroup();
   var currentGroup = currentGroupRef.getTarget();
   var currentOffset = currentGroupRef.getTimeOffset();
@@ -636,13 +642,26 @@ function switchToOtherTrackIfNeeded() {
   var rangeStart = position - currentOffset;
   var rangeEnd = rangeStart + lookAhead;
 
+  // 現在のトラック番号を特定
+  var currentTrackIndex = -1;
+  for (var tIdx = 0; tIdx < project.getNumTracks(); tIdx++) {
+    if (project.getTrack(tIdx) === currentTrack) {
+      currentTrackIndex = tIdx; break;
+    }
+  }
+
   // 現在のグループにノートがあるかチェック
   var hasNote = false;
-  for (var i = 0; i < currentGroup.getNumNotes(); i++) {
-    var note = currentGroup.getNote(i);
-    if (note.getEnd() > rangeStart && note.getOnset() < rangeEnd) {
-      hasNote = true;
-      break;
+  // 現在の場所がミュート中（mutedMapにあり）なら、ノートがあっても強制的に hasNote=false で他を探す
+  var isCurrentMuted = (currentTrackIndex !== -1) ? mutedMap[currentTrackIndex + ":" + currentGroupRef.getIndexInParent()] : false;
+
+  if (!isCurrentMuted) { // ミュートされていない場合のみ、ノートがあるか確認
+    for (var i = 0; i < currentGroup.getNumNotes(); i++) {
+      var note = currentGroup.getNote(i);
+      if (note.getEnd() > rangeStart && note.getOnset() < rangeEnd) {
+        hasNote = true;
+        break;
+      }
     }
   }
 
@@ -653,14 +672,26 @@ function switchToOtherTrackIfNeeded() {
   }
 
   // ノートがあるなら切り替え不要
-  if (hasNote) return;
+  // if (hasNote) return;
+  // ミュート中であるか、ノートがなければ他を探す（それ以外なら現状維持）
+  if (hasNote && !isCurrentMuted) return;
+
 
   // 最も早いトラックを選ぶための変数
   var bestGroupRef = null;  // 最も早いグループ参照
   var bestTrack = null;  // 数字比較のために現在ベストなトラック自体を保持
+  /*
   var minOnset = Infinity;  // 条件1番優先：ノートの発音開始位置
   var bestTrackPriority = -Infinity;  // 条件2番優先：トラック名の優先度スコア
   var bestOffset = Infinity; // 条件4番優先：発音同着時のグループ始点(offset)
+  */
+
+  // 今の自分の位置と優先度を「基準値（最底辺）」として設定
+  var minOnset = hasNote ? position : Infinity;     // ノートがあるなら現在位置、なければ無限大
+  var bestTrackPriority = hasNote ? getTrackPriority(currentTrack) : -Infinity;  // ノートがあるなら現在のトラック優先度、なければ無限大
+  var bestOffset = hasNote ? currentOffset : Infinity;  // ノートがあるなら現在のオフセット、なければ無限大
+  var bestGroupRef = null;  // 最も早いグループ参照
+  var bestTrack = null;  // 数字比較のために現在ベストなトラック自体を保持
 
   // 他のトラックをチェック
   for (var t = 0; t < project.getNumTracks(); t++) {  // トラックの数を取得
@@ -671,7 +702,11 @@ function switchToOtherTrackIfNeeded() {
 
     // トラック内のグループの数を取得
     for (var g = 0; g < track.getNumGroups(); g++) {
-      var groupRef = track.getGroupReference(g);  // トラック内のグループ参照を取得
+      // 事前検知でミュートされている場合はスキップ
+      if (mutedMap[t + ":" + g]) continue;
+
+      var groupRef = track.getGroupReference(g);
+      // トラック内のグループ参照を取得
       var group = groupRef.getTarget();  // グループを取得
       if (!group) continue;
       var offset = groupRef.getTimeOffset();  // グループのオフセットを取得
@@ -857,12 +892,28 @@ function checkPlayhead() {
     lastPlayheadSeconds = -1;
     return; // チェックが外れていたら何もしない
   }
-
-  var playback = SV.getPlayback();
-  if (playback.getStatus() === "stopped") {
-    lastPlayheadSeconds = -1;
+  var playback = SV.getPlayback();  // 再生状態を取得
+  if (playback.getStatus() === "stopped") { // 停止状態なら
+    lastPlayheadSeconds = -1; // 再生位置をリセット
     return;
   }
+
+  // 事前ミュートスキャン
+  mutedMap = {};
+  if (enableTrackSwitch.getValue()) {
+    var proj = SV.getProject();
+    for (var tSc = 0; tSc < proj.getNumTracks(); tSc++) {
+      var trkSc = proj.getTrack(tSc);
+      var trkMuted = (typeof trkSc.getMute === "function" && trkSc.getMute()) || (typeof trkSc.isMuted === "function" && trkSc.isMuted());
+      for (var gSc = 0; gSc < trkSc.getNumGroups(); gSc++) {
+        var grSc = trkSc.getGroupReference(gSc);
+        if (trkMuted || (typeof grSc.getMute === "function" && grSc.getMute()) || (typeof grSc.isMuted === "function" && grSc.isMuted())) {
+          mutedMap[tSc + ":" + gSc] = true;
+        }
+      }
+    }
+  }
+
 
   // シーク（再生バー移動）検知
   var currentSeconds = playback.getPlayhead();

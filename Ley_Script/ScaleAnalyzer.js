@@ -4,7 +4,7 @@
     - 曲調から候補を絞り込むことも可能。
   - 構成音が全く同じスケール（平行調やモードなど）はひとまとめにして表示されます。
     - OctatonicスケールのHalf-Whole（半音-全音）はSV2 Editor のスケール設定が非対応なので除外しています。
-  - 一度解析したスケールはプロジェクトファイルに保存されるのでグループ別に解析結果を保持できます。
+  - 一度解析した情報はプロジェクトファイルに保存されるのでグループ別に解析結果を保持できます。
     - 此岸さくら氏作スクリプト（ParameterBox.js）のScriptData管理方式を参考に実装。
     - Clear ボタンで選択グループの解析結果を削除できます。
     - All Clear ボタンで全グループの解析結果を削除できます。
@@ -89,7 +89,7 @@ for (var i = 0; i < SCALE_DEFS.length; i++) {
 }
 
 var textValue = SV.create("WidgetValue"); // テキスト表示用
-var buttonValue = SV.create("WidgetValue"); // ボタン用
+var analyzeButtonValue = SV.create("WidgetValue"); // ボタン用
 var moodCombo = SV.create("WidgetValue"); // ムードコンボボックス用
 // moodCombo.setValue(0); // デフォルトは「指定なし」
 if (moodCombo.getValue() == null) {   // moodCombo が null の場合（初期状態）は 0 をセット（一度だけ初期化）
@@ -136,7 +136,7 @@ function isNoteExcluded(note) {
 }
 
 // ボタンが押されたときの処理
-buttonValue.setValueChangeCallback(function () {
+analyzeButtonValue.setValueChangeCallback(function () {
   var selection = mainEditor.getSelection();
   var targetGroup = mainEditor.getCurrentGroup().getTarget();
   var sourceNotes = [];
@@ -284,7 +284,7 @@ buttonValue.setValueChangeCallback(function () {
     for (var g = 0; g < groups.length; g++) {
       var namesList = groups[g].join(" / ");
 
-      var formattedNames = "";  // 初期化（開業しない場合は不要）
+      var formattedNames = "";  // 初期化（改行しない場合は不要）
       var words = namesList.split(" / ");
       var line = "";
 
@@ -536,7 +536,7 @@ function getSidePanelSectionState() {
         "columns": [
           { // スケール解析の実行
             "type": "Button",
-            "value": buttonValue,
+            "value": analyzeButtonValue,
             "text": SV.T("Analyze Scales"),
           }
         ]

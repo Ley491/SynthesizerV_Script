@@ -5,6 +5,7 @@
     - 右余白によるページ送り、ページ送り後の左余白（オフセット）、横スクロール速度を調整可能。
     - ピアノロールとアレンジビューの両方に対応。
 - 再生中ノートの自動選択機能を搭載（br は除外）。
+  - スクリプトパネルのチェックボックスでON/OFF可能。
 - 次のグループに自動で選択を切り替えます。
     - 選択トラックの再生位置にノートが存在しない場合、他のトラックを探索して自動で切り替えます（ON/OFF 可能）。
     - 対象が複数存在する場合は、トラック名の優先度リスト（var priorityLists / downgradeLists）と数字に従って切り替わります。
@@ -32,7 +33,7 @@ function getClientInfo() {
   return {
     "name": "Scroll Settings UI",
     "author": "Ley",
-    "versionNumber": 1.7,
+    "versionNumber": 1.8,
     "minEditorVersion": 131330,
     "type": "SidePanelSection",
     "category": "Ley Script"
@@ -61,6 +62,7 @@ function getTranslations(langCode) {
       ["Reset to Default", "デフォルトに戻す"],
       ["Enable Track Auto-Switch", "トラックを自動で切り替える"],
       ["Enable Scroll Logic", "スクロール処理を有効にする"],
+      ["Enable Note Selection", "再生バー位置のノートを選択する"],
     ];
   }
   return [];
@@ -76,6 +78,7 @@ var defaultValues = {
   pageTurnOffset: 0,            // 左余白
   scrollSpeed: 0.4,             // 縦方向速度
   horizontalScrollSpeed: 0.1,   // 横方向速度
+  enableNoteSelection: true,   // 再生バー位置のノートを選択する（true = 有効）
   enableTrackSwitch: true,      // トラック自動切り替え（true = 有効）
   enableScrollLogic: true,      // 自動スクロール機能（true = 有効）
 };
@@ -90,6 +93,7 @@ var presets = {
     pageTurnOffset: 1,
     horizontalScrollSpeed: 0.2,
     scrollSpeed: 0.2,
+    enableNoteSelection: false,   // 再生バー位置のノートを選択する（true = 有効）
     enableTrackSwitch: false,
     enableScrollLogic: true,
   },
@@ -101,6 +105,7 @@ var presets = {
     pageTurnOffset: 2,
     horizontalScrollSpeed: 0.3,
     scrollSpeed: 0.5,
+    enableNoteSelection: false,   // 再生バー位置のノートを選択する（true = 有効）
     enableTrackSwitch: true,
     enableScrollLogic: false,
   },
@@ -112,6 +117,7 @@ var presets = {
     pageTurnOffset: 3,
     horizontalScrollSpeed: 0,
     scrollSpeed: 0.25,
+    enableNoteSelection: true,   // 再生バー位置のノートを選択する（true = 有効）
     enableTrackSwitch: false,
     enableScrollLogic: false,
   },
@@ -140,6 +146,8 @@ var resetButton = SV.create("WidgetValue");   // リセットボタン
 var presetSelector = SV.create("WidgetValue");  // プリセット選択ボタン
 presetSelector.setValue(0); // 0 = Default（初期値）
 
+var enableNoteSelection = SV.create("WidgetValue");   // 再生バー位置のノートを選択する
+enableNoteSelection.setValue(false); // 初期値はノート選択無効
 var enableTrackSwitch = SV.create("WidgetValue");   // トラック切り替え機能
 enableTrackSwitch.setValue(false); // 初期値は自動トラック切り替え無効
 var enableScrollLogic = SV.create("WidgetValue");   // オートスクロール切り替え
@@ -177,6 +185,7 @@ resetButton.setValueChangeCallback(function () {
   pageTurnOffset.setValue(defaultValues.pageTurnOffset);
   scrollSpeed.setValue(defaultValues.scrollSpeed);
   horizontalScrollSpeed.setValue(defaultValues.horizontalScrollSpeed);
+  enableNoteSelection.setValue(defaultValues.enableNoteSelection);
   enableTrackSwitch.setValue(defaultValues.enableTrackSwitch);
   enableScrollLogic.setValue(defaultValues.enableScrollLogic);
 });
@@ -199,6 +208,7 @@ function applyPreset(name) {
   pageTurnOffset.setValue(preset.pageTurnOffset);
   scrollSpeed.setValue(preset.scrollSpeed);
   horizontalScrollSpeed.setValue(preset.horizontalScrollSpeed);
+  enableNoteSelection.setValue(preset.enableNoteSelection);
   enableTrackSwitch.setValue(preset.enableTrackSwitch);
   enableScrollLogic.setValue(preset.enableScrollLogic);
 }
@@ -554,7 +564,10 @@ function switchToNextGroupIfNeeded() {
     }
 
     // パターンB: どれも範囲外の場合（空白区間にいる）、未来方向の直近のグループを選ぶ
-    if (range.start > position) {
+    if (!enableTrackSwitch.getValue() && range.start > position) {
+      /*
+      if (range.start > position) {
+      */
       var dist = range.start - position;
       if (dist < minDistance) {
         minDistance = dist;
@@ -679,7 +692,7 @@ function switchToOtherTrackIfNeeded() {
 
   // 最も早いトラックを選ぶための変数
   var bestGroupRef = null;  // 最も早いグループ参照
-  var bestTrack = null;  // 数字比較のために現在ベストなトラック自体を保持
+  var bestTrack = currentTrack;  // 数字比較のために現在ベストなトラック自体を保持
   /*
   var minOnset = Infinity;  // 条件1番優先：ノートの発音開始位置
   var bestTrackPriority = -Infinity;  // 条件2番優先：トラック名の優先度スコア
@@ -691,14 +704,15 @@ function switchToOtherTrackIfNeeded() {
   var bestTrackPriority = hasNote ? getTrackPriority(currentTrack) : -Infinity;  // ノートがあるなら現在のトラック優先度、なければ無限大
   var bestOffset = hasNote ? currentOffset : Infinity;  // ノートがあるなら現在のオフセット、なければ無限大
   var bestGroupRef = null;  // 最も早いグループ参照
-  var bestTrack = null;  // 数字比較のために現在ベストなトラック自体を保持
+  // var bestTrack = null;  // 数字比較のために現在ベストなトラック自体を保持
 
   // 他のトラックをチェック
   for (var t = 0; t < project.getNumTracks(); t++) {  // トラックの数を取得
     var track = project.getTrack(t);  // トラックを取得
 
     // 現在のトラックはスキップ
-    if (track === SV.getMainEditor().getCurrentTrack()) continue;
+    // if (track === SV.getMainEditor().getCurrentTrack()) continue;
+    // 【変更】今の自分のトラックも検索対象に含め、プロジェクト全体から「今」最適なものを探す
 
     // トラック内のグループの数を取得
     for (var g = 0; g < track.getNumGroups(); g++) {
@@ -812,10 +826,11 @@ function switchToOtherTrackIfNeeded() {
     }
   }
 
-  // もっとも最適なトラックに切り替え
-  if (bestGroupRef) {
+  // もし、今よりも「より良い候補」が見つかれば切り替える
+  if (bestGroupRef && bestGroupRef.getTarget().getUUID() !== currentGroup.getUUID()) {
     SV.getMainEditor().setCurrentGroup(bestGroupRef);
   }
+
 }
 
 // トラックの優先度スコアを判定する関数
@@ -946,12 +961,16 @@ function checkPlayhead() {
   }
   wasPlaying = isPlaying;
 
-  verticalScroll();
-  pageTurnerMain();
+  verticalScroll();  // 縦スクロール
+  pageTurnerMain();  // 横スクロール（ピアノロール）
   try { pageTurnerArrange(); } catch (e) { }  // pageTurnerArrange は例外発生時にループが止まらないよう try-catch で保護する
-  noteChecker();
-  switchToNextGroupIfNeeded();
-  switchToOtherTrackIfNeeded();
+  if (enableNoteSelection.getValue()) noteChecker();  // 再生バー位置のノートを選択する
+  if (enableTrackSwitch.getValue()) {
+    switchToOtherTrackIfNeeded(); // 全トラック（自分含む）から探すこの関数一つに任せる
+  } else {
+    switchToNextGroupIfNeeded();  // 次のグループに切り替える
+  }
+
 }
 
 setInterval(updatePeriod, checkPlayhead);
@@ -1068,13 +1087,13 @@ function getSidePanelSectionState() {
     rows.push({
       type: "Container",
       columns: [
-        {
+        {   // デフォルトに戻す
           type: "Button",
           text: SV.T("Reset to Default"),
           value: resetButton,
           width: 0.5
         },
-        {
+        {   // プリセット選択
           type: "ComboBox",
           text: SV.T("Preset"),
           value: presetSelector,
@@ -1088,7 +1107,7 @@ function getSidePanelSectionState() {
     rows.push({
       type: "Container",
       columns: [
-        {
+        {   // デフォルトに戻す
           type: "Button",
           text: SV.T("Reset to Default"),
           value: resetButton,
@@ -1102,7 +1121,18 @@ function getSidePanelSectionState() {
   rows.push({
     type: "Container",
     columns: [
-      {
+      {   // 再生バー位置のノートを選択する
+        type: "CheckBox",
+        text: SV.T("Enable Note Selection"),
+        value: enableNoteSelection
+      }
+    ]
+  });
+
+  rows.push({
+    type: "Container",
+    columns: [
+      {   // トラック自動切り替え機能
         type: "CheckBox",
         text: SV.T("Enable Track Auto-Switch"),
         value: enableTrackSwitch
@@ -1113,7 +1143,7 @@ function getSidePanelSectionState() {
   rows.push({
     type: "Container",
     columns: [
-      {
+      {   // オートスクロール切り替え
         type: "CheckBox",
         text: SV.T("Enable Scroll Logic"),
         value: enableScrollLogic

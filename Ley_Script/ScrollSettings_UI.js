@@ -8,7 +8,8 @@
   - スクリプトパネルのチェックボックスでON/OFF可能。
 - 次のグループに自動で選択を切り替えます。
     - 選択トラックの再生位置にノートが存在しない場合、他のトラックを探索して自動で切り替えます（ON/OFF 可能）。
-    - 対象が複数存在する場合は、トラック名の優先度リスト（var priorityLists / downgradeLists）と数字に従って切り替わります。
+    - ミュートトラック・ミュートグループは除外し、ソロトラックが存在する場合は、ソロトラックのみを対象とします。
+    - 対象が複数存在する場合は、トラック名の優先度リスト（var priorityLists / downgradeLists）と数字、トラックの表示順に従って切り替わります。
 - デフォルト値へのリセット、スクロール処理の ON/OFF 切り替え可能です。
 - プリセット機能を実装。var presets を編集することで自由にプリセット登録できます。
     - プリセット機能が不要の場合はvar enablePresetUI を false に書き換えてください。
@@ -20,12 +21,15 @@ var enablePresetUI = true;   // ← false にするとプリセットUIが非表
 var priorityLists = [
   ["main", "vo", "vocal"], // 第一優先（最も優先されるトラック名：部分一致）
   ["sub", "ham"], // 第二優先
-  // ["Cho", "Chorus"], // 第三優先
-  // []で囲ったリストを増やせば優先リストを増やせます
+  // ["Cho", "Chorus"], // このように[]で囲ったリストを増やせば優先リストを増やせます。
+  // 優先度リストを使わない場合は空の配列にしてください
+  // 例：var priorityLists = [];
 ];
 
 // トラック名の優先度を下げるリスト ※小文字でも大文字でも良い
 var downgradeLists = ["コピー", "copy", "test"];
+// 優先度を下げるリストを使わない場合は空の配列にしてください
+// 例：var downgradeLists = [];
 
 
 
@@ -33,7 +37,7 @@ function getClientInfo() {
   return {
     "name": "Scroll Settings UI",
     "author": "Ley",
-    "versionNumber": 1.8,
+    "versionNumber": 1.9,
     "minEditorVersion": 131330,
     "type": "SidePanelSection",
     "category": "Ley Script"
@@ -582,51 +586,6 @@ function switchToNextGroupIfNeeded() {
   }
 }
 
-/*
-// グループ自動切り替え（以前の実装）
-function switchToNextGroupIfNeeded() {
-  if (!enableAutoNextGroup) return;
-  var playback = SV.getPlayback();
-  var timeAxis = SV.getProject().getTimeAxis();
-  var seconds = playback.getPlayhead();
-  if (seconds === null) return;
-  // if (typeof seconds !== "number" || isNaN(seconds)) return;  // 数値である場合はOK
-  var position = timeAxis.getBlickFromSeconds(seconds);
-  var groupRef = SV.getMainEditor().getCurrentGroup();
-  if (!groupRef) return;
-
-  var group = groupRef.getTarget();
-  if (!group) return;
-
-  var groupEnd = 0;
-  for (var i = 0; i < group.getNumNotes(); i++) {
-    var note = group.getNote(i);
-    if (note.getEnd() > groupEnd) groupEnd = note.getEnd();
-  }
-  var currentEnd = groupRef.getTimeOffset() + groupEnd;
-
-  // 再生位置が現在のグループの終端を超えたら、次のグループへ移動
-  if (position > currentEnd) {
-    var targetUUID = group.getUUID();
-    var project = SV.getProject();
-    for (var t = 0; t < project.getNumTracks(); t++) {
-      var track = project.getTrack(t);
-      for (var i = 0; i < track.getNumGroups(); i++) {
-        var g = track.getGroupReference(i);
-        var target = g.getTarget();
-        if (target && target.getUUID() === targetUUID) {
-          var nextIndex = i + 1;
-          if (nextIndex < track.getNumGroups()) {
-            var nextGroup = track.getGroupReference(nextIndex);
-            SV.getMainEditor().setCurrentGroup(nextGroup);
-          }
-          return;
-        }
-      }
-    }
-  }
-}
-*/
 
 
 // トラック探索+切り替え
@@ -763,51 +722,69 @@ function switchToOtherTrackIfNeeded() {
               bestTrack = track;  // ベストトラック更新
             }
 
-            // 条件3: 発音もトラック名の優先順位もかち合った場合、まず「先頭の数字」で比較し、次に「末尾の数字」で枝番比較する
+            // 条件3: 発音もトラック名の優先順位もかち合った場合、UIの表示順を新しい条件3として比較する
             else if (trackPriority === bestTrackPriority) {
 
-              var currentName = track.getName();  // 評価中のトラック名
-              var bestName = bestTrack.getName();  // ベストなトラック名
+              // 万が一APIが存在しないバージョンのためにフォールバック(Infinity)を用意
+              var currentOrder = typeof track.getDisplayOrder === "function" ? track.getDisplayOrder() : Infinity;
+              var bestOrder = typeof bestTrack.getDisplayOrder === "function" ? bestTrack.getDisplayOrder() : Infinity;
 
-              // 前半：先頭の数字（トラック順位）による比較
-              // まずトラック名から先頭の数字だけを抽出する
-              var currentHead = currentName.match(/^\d+/);
-              var bestHead = bestName.match(/^\d+/);
-              // 数字がない場合は Infinity（最下位）
-              var currentHeadNum = currentHead ? parseInt(currentHead[0], 10) : Infinity;
-              var bestHeadNum = bestHead ? parseInt(bestHead[0], 10) : Infinity;
-
-              // もし先頭の数字に差があるなら、ベース名に関係なく数字が若い方を優先
-              if (currentHeadNum !== bestHeadNum) { //数字が違う場合
-                if (currentHeadNum < bestHeadNum) { //数字が若い方を優先
+              // 表示順に差があるなら、UI上で上にある（数値が小さい）トラックを無条件で優先する
+              if (currentOrder !== bestOrder) { //表示順に差がある場合  
+                if (currentOrder < bestOrder) { //表示順が若い方を優先
                   bestOffset = offset;  // 条件3番優先：発音同着時のグループ始点(offset)
                   bestGroupRef = groupRef;  // 最優先
                   bestTrack = track;  // ベストトラック更新
                 }
               }
-              // 後半：末尾の数字（枝番）による比較
-              // 先頭の数字が同じ（または両方なし）の場合は、末尾の数字を比較する
-              else { //先頭の数字が同じ場合
-                // トラック名から末尾の数字（枝番）のみを抽出
-                var currentTail = currentName.match(/\d+$/);
-                var bestTail = bestName.match(/\d+$/);
-                // 枝番がない（無印）場合は「0」を割り当て、複製元のオリジナル（0）が複製先（1, 2）よりも最優先されるようにする
-                var currentTailNum = currentTail ? parseInt(currentTail[0], 10) : 0;
-                var bestTailNum = bestTail ? parseInt(bestTail[0], 10) : 0;
+              // 条件4: 画面上の並び順すら同じ場合（通常あり得ないがAPI未対応時などの保険）、元のトラック名の数字で比較する（まず「先頭の数字」で比較し、次に「末尾の数字」で枝番比較する）
+              // else if (trackPriority === bestTrackPriority) {
+              else {
 
-                // 派生元を識別するため、トラック名から【末尾の枝番と、その手前のアンダーバー・ハイフン・空白】のみを除去した「ベース名」を取得
-                var currentBase = currentName.replace(/[\s_\-]*\d+$/g, "");
-                var bestBase = bestName.replace(/[\s_\-]*\d+$/g, "");
+                var currentName = track.getName();  // 評価中のトラック名
+                var bestName = bestTrack.getName();  // ベストなトラック名
 
-                // ベース名が一致する場合（＝派生トラック同士の場合）のみ、枝番を比較
-                if (currentBase === bestBase && currentTailNum !== bestTailNum) { //ベース名が同じで枝番が違う場合
-                  // 数字が若い方（無印は0扱い）が勝つ
-                  if (currentTailNum < bestTailNum) { //枝番が若い方を優先
+                // 前半：先頭の数字（トラック順位）による比較
+                // まずトラック名から先頭の数字だけを抽出する
+                var currentHead = currentName.match(/^\d+/);
+                var bestHead = bestName.match(/^\d+/);
+                // 数字がない場合は Infinity（最下位）
+                var currentHeadNum = currentHead ? parseInt(currentHead[0], 10) : Infinity;
+                var bestHeadNum = bestHead ? parseInt(bestHead[0], 10) : Infinity;
+
+                // もし先頭の数字に差があるなら、ベース名に関係なく数字が若い方を優先
+                if (currentHeadNum !== bestHeadNum) { //数字が違う場合
+                  if (currentHeadNum < bestHeadNum) { //数字が若い方を優先
                     bestOffset = offset;  // 条件3番優先：発音同着時のグループ始点(offset)
                     bestGroupRef = groupRef;  // 最優先
                     bestTrack = track;  // ベストトラック更新
                   }
                 }
+                // 後半：末尾の数字（枝番）による比較
+                // 先頭の数字が同じ（または両方なし）の場合は、末尾の数字を比較する
+                else { //先頭の数字が同じ場合
+                  // トラック名から末尾の数字（枝番）のみを抽出
+                  var currentTail = currentName.match(/\d+$/);
+                  var bestTail = bestName.match(/\d+$/);
+                  // 枝番がない（無印）場合は「0」を割り当て、複製元のオリジナル（0）が複製先（1, 2）よりも最優先されるようにする
+                  var currentTailNum = currentTail ? parseInt(currentTail[0], 10) : 0;
+                  var bestTailNum = bestTail ? parseInt(bestTail[0], 10) : 0;
+
+                  // 派生元を識別するため、トラック名から【末尾の枝番と、その手前のアンダーバー・ハイフン・空白】のみを除去した「ベース名」を取得
+                  var currentBase = currentName.replace(/[\s_\-]*\d+$/g, "");
+                  var bestBase = bestName.replace(/[\s_\-]*\d+$/g, "");
+
+                  // ベース名が一致する場合（＝派生トラック同士の場合）のみ、枝番を比較
+                  if (currentBase === bestBase && currentTailNum !== bestTailNum) { //ベース名が同じで枝番が違う場合
+                    // 数字が若い方（無印は0扱い）が勝つ
+                    if (currentTailNum < bestTailNum) { //枝番が若い方を優先
+                      bestOffset = offset;  // 条件3番優先：発音同着時のグループ始点(offset)
+                      bestGroupRef = groupRef;  // 最優先
+                      bestTrack = track;  // ベストトラック更新
+                    }
+                  }
+                }
+                /* グループ始点による優先順位付けは廃止
                 // 条件4: ベース名も違う全くの別トラック、または先頭も末尾も同じ場合は、グループ始点が早い方を優先
                 else {
                   if (offset < bestOffset) { //グループ始点が早い方を優先
@@ -816,6 +793,7 @@ function switchToOtherTrackIfNeeded() {
                     bestTrack = track;  // ベストトラック更新
                   }
                 }
+                */
               }
             }
           }
@@ -840,21 +818,26 @@ function getTrackPriority(track) {
   // 優先度スコア
   var score = 0;
 
+  // リストが未定義（または空）の場合のエラー回避用ガード
+  var dList = (typeof downgradeLists !== "undefined" && Array.isArray(downgradeLists)) ? downgradeLists : []; // 優先度を下げるリスト
+  var pList = (typeof priorityLists !== "undefined" && Array.isArray(priorityLists)) ? priorityLists : []; // 優先度リスト
+
   // 1. マイナスリストに該当する場合は -1（returnせず続行）
-  for (var k = 0; k < downgradeLists.length; k++) {
-    if (name.indexOf(downgradeLists[k].toLowerCase()) >= 0) {
+  for (var k = 0; k < dList.length; k++) {
+    if (name.indexOf(dList[k].toLowerCase()) >= 0) {
       score -= 1;
       break;
     }
   }
 
   // 2. 優先リストに該当する場合は +n（第一優先なら最大値）
-  for (var i = 0; i < priorityLists.length; i++) {
-    var list = priorityLists[i];
+  for (var i = 0; i < pList.length; i++) {
+    var list = pList[i];
+    if (!Array.isArray(list)) continue; // 二次元配列の一部が欠けている場合をガード
     for (var j = 0; j < list.length; j++) {
       if (name.indexOf(list[j].toLowerCase()) >= 0) {
         // 第一優先なら一番大きい数字が返り、第二優先ならその次の数字が返る
-        score += priorityLists.length - i;
+        score += pList.length - i;
         break;
       }
     }
@@ -913,6 +896,61 @@ function checkPlayhead() {
     return;
   }
 
+  // 事前スキャン（ミュート・ソロ状態の把握と負荷軽減）
+  mutedMap = {};
+  if (enableTrackSwitch.getValue()) {
+    var proj = SV.getProject();
+    var numTracks = proj.getNumTracks();
+
+    // 1段目：ソロ状態のプレビュー
+    var hasSolo = false;
+    var soloFlags = [];
+    var muteFlags = [];
+
+    for (var tSc = 0; tSc < numTracks; tSc++) {
+      var trkSc = proj.getTrack(tSc);
+      var mixer = (typeof trkSc.getMixer === "function") ? trkSc.getMixer() : null;
+      var isSolo = mixer ? mixer.isSolo() : false;
+      var isTrkMuted = mixer ? mixer.isMuted() : ((typeof trkSc.getMute === "function" && trkSc.getMute()) || (typeof trkSc.isMuted === "function" && trkSc.isMuted()));
+
+      soloFlags[tSc] = isSolo;
+      muteFlags[tSc] = isTrkMuted;
+      if (isSolo) hasSolo = true; // 1つでもソロがあればフラグON
+    }
+
+    // 2段目：本スキャン（除外マップへの登録）
+    for (var tSc = 0; tSc < numTracks; tSc++) {
+      var trkSc = proj.getTrack(tSc);
+      var isTrkMuted = muteFlags[tSc];
+      var isSolo = soloFlags[tSc];
+
+      // プロジェクト内にソロトラックが存在する場合ソロトラック以外をミュート扱いにする
+      if (hasSolo && !isSolo) {
+        isTrkMuted = true; // ソロが存在する時の非ソロトラックは候補から完全除外
+      }
+
+      // トラック自体がミュート扱いなら全グループを除外
+      if (isTrkMuted) {
+        var numGrps = trkSc.getNumGroups();
+        for (var gAll = 0; gAll < numGrps; gAll++) {
+          mutedMap[tSc + ":" + gAll] = true;
+        }
+        continue;
+      }
+
+      // トラックがミュート扱いでない時は、内部のグループがミュートされていないか個別に確認
+      var numGrps = trkSc.getNumGroups();
+      for (var gSc = 0; gSc < numGrps; gSc++) {
+        var grSc = trkSc.getGroupReference(gSc);
+        if ((typeof grSc.getMute === "function" && grSc.getMute()) || (typeof grSc.isMuted === "function" && grSc.isMuted())) {
+          mutedMap[tSc + ":" + gSc] = true;
+        }
+      }
+    }
+  }
+
+
+  /* ミュートグループのみ除外
   // 事前ミュートスキャン
   mutedMap = {};
   if (enableTrackSwitch.getValue()) {
@@ -928,7 +966,7 @@ function checkPlayhead() {
       }
     }
   }
-
+  */
 
   // シーク（再生バー移動）検知
   var currentSeconds = playback.getPlayhead();
@@ -1156,48 +1194,3 @@ function getSidePanelSectionState() {
     rows: rows
   };
 }
-/*
-      {
-        type: "Container",
-        columns: [
-          {   // デフォルト設定に戻す
-            type: "Button",
-            text: SV.T("Reset to Default"),
-            value: resetButton,
-            width: 0.5
-          },
-          
-          { // プリセット選択
-            type: "ComboBox",
-            text: SV.T("Preset"),
-            value: presetSelector,
-            choices: presetList,  // デフォルト+プリセット自動登録
-            width: 0.5
-          }
-          
-          ]
-      },
-      {
-        "type": "Container",
-        "columns":[
-          {   // トラック自動切り替え
-            "type": "CheckBox",
-            "text": SV.T("Enable Track Auto-Switch"),
-            "value": enableTrackSwitch
-          }
-        ]
-      },
-      {
-      "type": "Container",
-      "columns":[
-      {   // スクロール機能実行切り替え
-          "type": "CheckBox",
-          "text": SV.T("Enable Scroll Logic"),
-          "value": enableScrollLogic,
-        }],
-      },
-    ]
-  };
-}
-
-*/

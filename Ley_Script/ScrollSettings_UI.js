@@ -19,11 +19,10 @@ var enablePresetUI = true;   // ← false にするとプリセットUIが非表
 
 // トラック優先度リスト（同じリスト内にある文字はすべて同じ優先度として扱う）※小文字でも大文字でも同一扱い
 var priorityLists = [
-  ["main", "vo", "vocal"], // 第一優先（最も優先されるトラック名：部分一致）
-  ["sub", "ham"], // 第二優先
-  // ["Cho", "Chorus"], // このように[]で囲ったリストを増やせば優先リストを増やせます。
-  // 優先度リストを使わない場合は空の配列にしてください
-  // 例：var priorityLists = [];
+  // ["main", "vo", "vocal"], // 第一優先（最も優先されるトラック名：部分一致）
+  // ["sub", "ham"], // 第二優先
+  // ["Cho", "Chorus"], // []で囲ったリストを増やすと優先リストの優先順位を細分化できます。
+  // 優先度リストを使わない場合は空の配列にしてください（例：var priorityLists = [];）
 ];
 
 // トラック名の優先度を下げるリスト ※小文字でも大文字でも良い
@@ -37,7 +36,7 @@ function getClientInfo() {
   return {
     "name": "Scroll Settings UI",
     "author": "Ley",
-    "versionNumber": 1.9,
+    "versionNumber": 1.10,
     "minEditorVersion": 131330,
     "type": "SidePanelSection",
     "category": "Ley Script"
@@ -235,8 +234,6 @@ function setInterval(t, callback) {
 
 // 横スクロール処理
 function makePageTurner(getCoordSystem) {
-  // var playback = SV.getPlayback(); // 起動直後エラーの可能性
-  // var timeAxis = SV.getProject().getTimeAxis(); // 起動直後エラーの可能性
   var isPageTurning = false;
   var targetPositionLeft = 0;
 
@@ -260,7 +257,7 @@ function makePageTurner(getCoordSystem) {
     // var margin = SV.QUARTER * 4; // 固定値
     var margin = rightMargin.getValue() * SV.QUARTER;
 
-
+    // スクロール中（目標の左端へ向かっている最中）
     if (isPageTurning && viewRange[0] < targetPositionLeft - margin) {
       // coordSystem.setTimeLeft(viewRange[0] * 0.9 + targetPositionLeft * 0.1);    // 固定値
       var speed = horizontalScrollSpeed.getValue(); // 0.01〜1.0
@@ -295,8 +292,6 @@ function makePageTurner(getCoordSystem) {
 var justJumped = false;
 // 縦スクロール処理
 function makeVerticalScroll(getCoordSystem) {
-  // var playback = SV.getPlayback(); // 起動直後エラーの可能性
-  // var timeAxis = SV.getProject().getTimeAxis(); // 起動直後エラーの可能性
   var uuid, groupIndex, lastCenter = null, scrollTarget = null;
 
   var vScroll = function () {
@@ -891,8 +886,41 @@ function checkPlayhead() {
     return; // チェックが外れていたら何もしない
   }
   var playback = SV.getPlayback();  // 再生状態を取得
-  if (playback.getStatus() === "stopped") { // 停止状態なら
-    lastPlayheadSeconds = -1; // 再生位置をリセット
+
+  var currentSeconds = playback.getPlayhead();  // 再生位置を取得
+  if (typeof currentSeconds !== "number" || isNaN(currentSeconds)) return;  // 再生位置が数値でない場合は終了
+
+  // DAW経由対応：シーク（0.4秒以上のワープ）検知
+  var isSeeked = false;
+  if (lastPlayheadSeconds !== -1 && Math.abs(currentSeconds - lastPlayheadSeconds) > 0.4) {
+    isSeeked = true;
+    resetInternalState();
+    if (enableTrackSwitch.getValue()) forceTrackSearch = true; // 強制再探索
+  }
+
+  // 「ステータスがplaying」または「再生バーが前フレームから(シークせず)滑らかに進んだ」なら再生中とみなす
+  var isPlayheadMoving = (currentSeconds !== lastPlayheadSeconds);
+  // 内部リセット（再生開始・停止時）
+  var isPlaying = (playback.getStatus() === "playing") || isPlayheadMoving;
+
+
+  // 再生開始時に初期化
+  if (!wasPlaying && isPlaying) {
+    resetInternalState();
+    // 再生開始時に強制再探索
+    if (enableTrackSwitch.getValue()) forceTrackSearch = true;
+  }
+  // 再生終了時に初期化
+  if (wasPlaying && !isPlaying) {
+    resetInternalState();
+  }
+
+  // 状態の保存（次フレーム用）
+  wasPlaying = isPlaying;
+  lastPlayheadSeconds = currentSeconds;
+
+  // 停止中の場合はここで終了
+  if (!isPlaying) {
     return;
   }
 
@@ -968,6 +996,7 @@ function checkPlayhead() {
   }
   */
 
+  /*
   // シーク（再生バー移動）検知
   var currentSeconds = playback.getPlayhead();
   if (typeof currentSeconds === "number" && !isNaN(currentSeconds)) {
@@ -984,20 +1013,7 @@ function checkPlayhead() {
     }
     lastPlayheadSeconds = currentSeconds;
   }
-
-
-  // 内部リセット（再生開始・停止時）
-  var isPlaying = (playback.getStatus() === "playing");
-
-  // 再生開始時に初期化
-  if (!wasPlaying && isPlaying) {
-    resetInternalState();
-  }
-  // 再生終了時に初期化
-  if (wasPlaying && !isPlaying) {
-    resetInternalState();
-  }
-  wasPlaying = isPlaying;
+  */
 
   verticalScroll();  // 縦スクロール
   pageTurnerMain();  // 横スクロール（ピアノロール）

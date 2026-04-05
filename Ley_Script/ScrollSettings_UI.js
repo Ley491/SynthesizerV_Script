@@ -8,6 +8,7 @@
   - スクリプトパネルのチェックボックスでON/OFF可能。
 - 次のグループに自動で選択を切り替えます。
     - 選択トラックの再生位置にノートが存在しない場合、他のトラックを探索して自動で切り替えます（ON/OFF 可能）。
+      - DAWのプラグインでトラック自動切り替え機能を有効にしていると、再生中に再生バーを動かした際に、微妙に再生位置が巻き戻る現象が発生する可能性があります。
     - ミュートトラック・ミュートグループは除外し、ソロトラックが存在する場合は、ソロトラックのみを対象とします。
     - 対象が複数存在する場合は、トラック名の優先度リスト（var priorityLists / downgradeLists）と数字、トラックの表示順に従って切り替わります。
 - デフォルト値へのリセット、スクロール処理の ON/OFF 切り替え可能です。
@@ -21,7 +22,7 @@ var enablePresetUI = true;   // ← false にするとプリセットUIが非表
 var priorityLists = [
   // ["main", "vo", "vocal"], // 第一優先（最も優先されるトラック名：部分一致）
   // ["sub", "ham"], // 第二優先
-  // ["Cho", "Chorus"], // []で囲ったリストを増やすと優先リストの優先順位を細分化できます。
+  // ["Cho", "Chorus"], // []で囲ったリストを増やすと優先リストの順位を細分化できます。
   // 優先度リストを使わない場合は空の配列にしてください（例：var priorityLists = [];）
 ];
 
@@ -81,23 +82,25 @@ var defaultValues = {
   pageTurnOffset: 0,            // 左余白
   scrollSpeed: 0.4,             // 縦方向速度
   horizontalScrollSpeed: 0.1,   // 横方向速度
-  enableNoteSelection: true,   // 再生バー位置のノートを選択する（true = 有効）
+  enableNoteSelection: false,   // 再生バー位置のノートを選択する（true = 有効）
   enableTrackSwitch: true,      // トラック自動切り替え（true = 有効）
-  enableScrollLogic: true,      // 自動スクロール機能（true = 有効）
+  enableScrollLogic: false,      // 自動スクロール機能（true = 有効）
 };
+
+
 
 // プリセット（編集して自由に追加・変更可能）
 var presets = {
   "Preset A": { // プリセット名
-    lookAheadBars: 1,
-    topMargin: 2,
-    bottomMargin: 6,
-    rightMargin: 2,
-    pageTurnOffset: 1,
-    horizontalScrollSpeed: 0.2,
-    scrollSpeed: 0.2,
-    enableNoteSelection: false,   // 再生バー位置のノートを選択する（true = 有効）
-    enableTrackSwitch: false,
+    lookAheadBars: 2,
+    topMargin: 4,
+    bottomMargin: 9,
+    rightMargin: 4,
+    pageTurnOffset: 0,
+    horizontalScrollSpeed: 0.1,
+    scrollSpeed: 0.4,
+    enableNoteSelection: true,
+    enableTrackSwitch: true,
     enableScrollLogic: true,
   },
   "Preset B": {
@@ -108,7 +111,7 @@ var presets = {
     pageTurnOffset: 2,
     horizontalScrollSpeed: 0.3,
     scrollSpeed: 0.5,
-    enableNoteSelection: false,   // 再生バー位置のノートを選択する（true = 有効）
+    enableNoteSelection: false,
     enableTrackSwitch: true,
     enableScrollLogic: false,
   },
@@ -120,7 +123,7 @@ var presets = {
     pageTurnOffset: 3,
     horizontalScrollSpeed: 0,
     scrollSpeed: 0.25,
-    enableNoteSelection: true,   // 再生バー位置のノートを選択する（true = 有効）
+    enableNoteSelection: true,
     enableTrackSwitch: false,
     enableScrollLogic: false,
   },
@@ -150,14 +153,14 @@ var presetSelector = SV.create("WidgetValue");  // プリセット選択ボタ�
 presetSelector.setValue(0); // 0 = Default（初期値）
 
 var enableNoteSelection = SV.create("WidgetValue");   // 再生バー位置のノートを選択する
-enableNoteSelection.setValue(false); // 初期値はノート選択無効
 var enableTrackSwitch = SV.create("WidgetValue");   // トラック切り替え機能
-enableTrackSwitch.setValue(false); // 初期値は自動トラック切り替え無効
 var enableScrollLogic = SV.create("WidgetValue");   // オートスクロール切り替え
-enableScrollLogic.setValue(false); // 初期状態はオートスクロール無効
+
 
 var wasPlaying = false; // 前フレームの再生状態を保持するフラグ（リセット機能）
+var lastPlayheadSeconds = -1; // 再生バー位置の記録用
 
+/*
 // WidgetValues初期化
 lookAheadBars.setValue(2);
 topMargin.setValue(4);
@@ -166,7 +169,29 @@ rightMargin.setValue(4);
 pageTurnOffset.setValue(0); // 0 = 左端までスクロール
 scrollSpeed.setValue(0.4);
 horizontalScrollSpeed.setValue(0.1); // 初期値（ゆっくり）
+enableNoteSelection.setValue(false); // 初期値はノート選択無効
+enableTrackSwitch.setValue(false); // 初期値は自動トラック切り替え無効
+enableScrollLogic.setValue(false); // 初期状態はオートスクロール無効
+*/
 
+// デフォルト設定の適用
+function applyDefaultSettings() {
+  lookAheadBars.setValue(defaultValues.lookAheadBars); // 先読み
+  topMargin.setValue(defaultValues.topMargin); // 上余白
+  bottomMargin.setValue(defaultValues.bottomMargin); // 下余白
+  rightMargin.setValue(defaultValues.rightMargin); // 右余白
+  pageTurnOffset.setValue(defaultValues.pageTurnOffset); // 左余白
+  scrollSpeed.setValue(defaultValues.scrollSpeed); // 縦方向速度
+  horizontalScrollSpeed.setValue(defaultValues.horizontalScrollSpeed); // 横方向速度
+  enableNoteSelection.setValue(defaultValues.enableNoteSelection); // 再生バー位置のノートを選択する
+  enableTrackSwitch.setValue(defaultValues.enableTrackSwitch); // トラック自動切り替え
+  enableScrollLogic.setValue(defaultValues.enableScrollLogic); // 自動スクロール機能
+}
+
+// ▼ スクリプト起動時に WidgetValues を初期化
+applyDefaultSettings();
+// ▼ リセットボタン（デフォルトに戻す）が押された時も同じ処理を実行
+resetButton.setValueChangeCallback(applyDefaultSettings);
 
 // 定数
 var updatePeriod = 50; // 50msごとにチェック※ 100msだと先読み小節数への反応が鈍く、20msだと敏感
@@ -178,7 +203,7 @@ var forceTrackSearch = false; // 強制的にトラックを検索するフラ�
 var trackPriority = 0;  // トラックの優先度初期値
 var mutedMap = {};      // 全トラック・全グループのミュート状態を保持するマップ
 
-
+/*
 // デフォルトに戻す
 resetButton.setValueChangeCallback(function () {
   lookAheadBars.setValue(defaultValues.lookAheadBars);
@@ -192,6 +217,7 @@ resetButton.setValueChangeCallback(function () {
   enableTrackSwitch.setValue(defaultValues.enableTrackSwitch);
   enableScrollLogic.setValue(defaultValues.enableScrollLogic);
 });
+*/
 
 
 // プリセット反映用
@@ -899,7 +925,7 @@ function checkPlayhead() {
   }
 
   // 「ステータスがplaying」または「再生バーが前フレームから(シークせず)滑らかに進んだ」なら再生中とみなす
-  var isPlayheadMoving = (currentSeconds !== lastPlayheadSeconds);
+  var isPlayheadMoving = (currentSeconds !== lastPlayheadSeconds) && !isSeeked;
   // 内部リセット（再生開始・停止時）
   var isPlaying = (playback.getStatus() === "playing") || isPlayheadMoving;
 

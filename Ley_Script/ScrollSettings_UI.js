@@ -1,4 +1,4 @@
-/*スクリプトパネル用スクリプト
+/* スクリプトパネル用スクリプト
 - まいこ氏作スクリプトSmoothNavigationPlayPlus.js（横スクロール機能）とAutoVerticalScroll.js（縦スクロール機能）とSelectPlayPosiNote.js（再生中ノート選択機能）、此岸さくら氏作スクリプトSelectPlayingNote Patched.js（再生中ノート選択Pitch版機能）を元にスクリプトパネルで設定を微調整できるように改変。
 - 再生中の縦・横スクロール挙動を細かく調整できるようにしたもの。
     - 上下の余白、先読み小節数、縦スクロール速度を調整可能。
@@ -159,6 +159,7 @@ var enableScrollLogic = SV.create("WidgetValue");   // オートスクロール�
 
 var wasPlaying = false; // 前フレームの再生状態を保持するフラグ（リセット機能）
 var lastPlayheadSeconds = -1; // 再生バー位置の記録用
+var lastSelectedGroupUUID = ""; // 手動トラック切り替えの検知用
 
 /*
 // WidgetValues初期化
@@ -925,7 +926,9 @@ function checkPlayhead() {
   }
 
   // 「ステータスがplaying」または「再生バーが前フレームから(シークせず)滑らかに進んだ」なら再生中とみなす
-  var isPlayheadMoving = (currentSeconds !== lastPlayheadSeconds) && !isSeeked;
+  // var isPlayheadMoving = (currentSeconds !== lastPlayheadSeconds) && !isSeeked;
+  // （lastPlayheadSeconds が -1 の時（チェックをONにした直後等）は移動とみなさない）
+  var isPlayheadMoving = (lastPlayheadSeconds !== -1) && (currentSeconds !== lastPlayheadSeconds) && !isSeeked;
   // 内部リセット（再生開始・停止時）
   var isPlaying = (playback.getStatus() === "playing") || isPlayheadMoving;
 
@@ -945,10 +948,31 @@ function checkPlayhead() {
   wasPlaying = isPlaying;
   lastPlayheadSeconds = currentSeconds;
 
+  // 【追加】手動でのトラック（グループ）切り替え検知
+  var currentGroupRef = SV.getMainEditor().getCurrentGroup();
+  var currentGroupUUID = currentGroupRef ? currentGroupRef.getTarget().getUUID() : "";
+  var isGroupChanged = false;
+  // 前フレームと選択されている対象が違う場合、手動で切り替えられたとみなす
+  if (lastSelectedGroupUUID !== "" && currentGroupUUID !== "" && currentGroupUUID !== lastSelectedGroupUUID) {
+    isGroupChanged = true;
+  }
+  lastSelectedGroupUUID = currentGroupUUID;
+
+
   // 停止中の場合はここで終了
   if (!isPlaying) {
-    return;
+    if (enableScrollLogic.getValue()) {
+      if (isSeeked) {
+        // 停止中のシーク（手動ワープ）に合わせてグループ選択と縦フォーカスを実行
+        focusOnSeekPosition(currentSeconds);
+      } else if (isGroupChanged) {
+        // シークせず手動でトラックが切り替えられた場合、高さ補正のみ実行
+        focusOnCurrentGroupHeight(currentSeconds);
+      }
+    }
+    return; // 再生中のみ表示位置調整を実行する場合は即return に変更する（if (isSeeked) {の下を削除）
   }
+
 
   // 事前スキャン（ミュート・ソロ状態の把握と負荷軽減）
   mutedMap = {};
@@ -1050,10 +1074,135 @@ function checkPlayhead() {
   } else {
     switchToNextGroupIfNeeded();  // 次のグループに切り替える
   }
-
 }
 
 setInterval(updatePeriod, checkPlayhead);
+
+// 停止時のシーク（再生バー手動移動）に合わせて、現在トラックのグループ選択と縦フォーカスを行う
+function focusOnSeekPosition(seconds) {
+  var editor = SV.getMainEditor();
+  var track = editor.getCurrentTrack();
+  var timeAxis = SV.getProject().getTimeAxis();
+  var position = timeAxis.getBlickFromSeconds(seconds);
+  var nav = editor.getNavigation();
+
+  if (!track || !nav) return;
+
+  var currentGroupRef = editor.getCurrentGroup();
+  var foundGroupRef = null;
+
+  // 1. 現在のトラック内で、指定位置を含むグループを探す
+  for (var i = 0; i < track.getNumGroups(); i++) {
+    var gRef = track.getGroupReference(i);
+    if (gRef.getOnset() <= position && position <= gRef.getEnd()) {
+      foundGroupRef = gRef;
+      break;
+    }
+  }
+
+  // 2. 見つかったグループを選択する（現在のグループと異なる場合のみ）
+  var activeGroupRef = foundGroupRef || currentGroupRef;
+  if (foundGroupRef && foundGroupRef.getTarget().getUUID() !== currentGroupRef.getTarget().getUUID()) {
+    editor.setCurrentGroup(foundGroupRef);
+  }
+
+  // 3. 選択されたグループの中で、再生バーの位置にある（または一番近い）ノートを探して縦スクロール
+  var group = activeGroupRef.getTarget();
+  var offset = activeGroupRef.getTimeOffset();
+  var targetPitch = null;
+  var targetNoteOnset = null; // 対象ノートの始点も記録する
+  var minDistance = Infinity;
+
+  // グループ内にノートが1つも無い場合はスキップ
+  if (group.getNumNotes() === 0) return;
+
+  for (var n = 0; n < group.getNumNotes(); n++) {
+    var note = group.getNote(n);
+    var ns = note.getOnset() + offset;
+    var ne = note.getEnd() + offset;
+
+    // 再生バーがこのノートの上に乗っていれば即決
+    if (ns <= position && position <= ne) {
+      targetPitch = note.getPitch();
+      targetNoteOnset = ns;
+      break;
+    }
+
+    // 乗っていない場合は、再生バーから一番近いノートを候補にしておく
+    var distance = Math.min(Math.abs(ns - position), Math.abs(ne - position));
+    if (distance < minDistance) {
+      minDistance = distance;
+      targetPitch = note.getPitch();
+      targetNoteOnset = ns;
+    }
+  }
+
+
+  // 4. ピッチが見つかっていれば、そこを中央に合わせて縦スクロール
+  if (targetPitch !== null) {
+    nav.setValueCenter(targetPitch);
+  }
+
+  // 5. グループ選択によって左端に飛ばされた画面を、対象に合わせて横スクロール補正
+  var timeViewRange = nav.getTimeViewRange();
+  var viewWidth = timeViewRange[1] - timeViewRange[0];  // 現在の画面の表示横幅
+
+  // 基本は「再生バーが中央付近（左から20%）」に来るようにする
+  var targetLeft = position - (viewWidth * 0.2);
+
+  // ノートの始点が再生バーより1小節(SV.QUARTER * 4)以上離れている場合
+  if (targetNoteOnset !== null) {
+    if (Math.abs(targetNoteOnset - position) >= SV.QUARTER * 4) {
+      // 「ノートの始点」が良い感じの場所（画面左から20%付近）に来るように基準を切り替える
+      targetLeft = targetNoteOnset - (viewWidth * 0.2);
+    }
+  }
+
+  if (targetLeft < 0) targetLeft = 0; // マイナス座標のガード
+  nav.setTimeLeft(targetLeft);
+}
+
+// 手動でグループ（トラック）を切り替えた時に、そのグループのノートの高さに縦位置だけを合わせる関数
+function focusOnCurrentGroupHeight(seconds) {
+  var editor = SV.getMainEditor();
+  var nav = editor.getNavigation();
+  var currentGroupRef = editor.getCurrentGroup();
+  if (!currentGroupRef || !nav) return;
+
+  var group = currentGroupRef.getTarget();
+  var offset = currentGroupRef.getTimeOffset();
+  var timeAxis = SV.getProject().getTimeAxis();
+  var position = timeAxis.getBlickFromSeconds(seconds);
+
+  if (group.getNumNotes() === 0) return;
+
+  var targetPitch = null;
+  var minDistance = Infinity;
+
+  // 再生バーに一番近いノートのピッチを探す
+  for (var n = 0; n < group.getNumNotes(); n++) {
+    var note = group.getNote(n);
+    var ns = note.getOnset() + offset;
+    var ne = note.getEnd() + offset;
+
+    if (ns <= position && position <= ne) {
+      targetPitch = note.getPitch();
+      break;
+    }
+
+    var distance = Math.min(Math.abs(ns - position), Math.abs(ne - position));
+    if (distance < minDistance) {
+      minDistance = distance;
+      targetPitch = note.getPitch();
+    }
+  }
+
+  // 縦スクロールのみ行う（横スクロールでユーザーの視界を壊さないため）
+  if (targetPitch !== null) {
+    nav.setValueCenter(targetPitch);
+  }
+}
+
 
 
 // スクリプトパネルUI

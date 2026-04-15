@@ -141,11 +141,14 @@ analyzeButtonValue.setValueChangeCallback(function () {
   var targetGroup = mainEditor.getCurrentGroup().getTarget();
   var sourceNotes = [];
 
+  var filteredNotes = null;
+
   // ノートの取得
   if (selection.hasSelectedNotes()) {
     var selectedNotes = selection.getSelectedNotes();
     // ノート選択時の安全チェック（例：3 ノート未満なら解析禁止）
-    var filteredNotes = [];
+    filteredNotes = [];  // ↑で先に宣言しているので var を付けない
+    // var filteredNotes = [];
     for (var i = 0; i < selectedNotes.length; i++) {
       if (!isNoteExcluded(selectedNotes[i])) {
         filteredNotes.push(selectedNotes[i]);
@@ -191,6 +194,7 @@ analyzeButtonValue.setValueChangeCallback(function () {
   // ムードの取得
   var selectedMood = moodCombo.getValue(); // 0:指定なし, 1:明るめ, 2:切ない, 3:おしゃれ, 4:異国情緒
   var results = [];
+  var fullResults = [];  // フル解析結果を保存する配列
 
   // マスクグループのループ
   for (var maskStr in maskGroups) {
@@ -206,21 +210,35 @@ analyzeButtonValue.setValueChangeCallback(function () {
 
     // 適合率の計算
     var percentage = (matchedNotesCount / totalNotes) * 100;
+    if (percentage < 70) continue;    // 70%未満は省く
 
-    // 70%未満は省く
-    if (percentage < 70) continue;
-
-    // 選択された雰囲気に合致するスケール名だけを抽出
-    var filteredNames = [];
     var scalesInMask = maskGroups[maskStr];
-    for (var n = 0; n < scalesInMask.length; n++) {
-      var name = scalesInMask[n].name;
 
+    // fullResults 用：MOOD 無視で全スケール名を入れる
+    var fullNames = [];
+    for (var n = 0; n < scalesInMask.length; n++) {
+      var nm = normalizeOctatonicName(scalesInMask[n].name);
+      if (nm) fullNames.push(nm);
+    }
+
+    // 解析結果ホ全て保存（fullResults 用）
+    if (fullNames.length > 0) {
+      fullResults.push({
+        mask: maskInt,
+        names: fullNames,
+        score: percentage,
+        moods: scalesInMask.map(function (x) { return x.moods; })
+      });
+    }
+
+    // 選択された雰囲気に合致するスケール名だけを抽出（results 用）
+    var filteredNames = [];
+    for (var n = 0; n < scalesInMask.length; n++) {
       // 表示から Half–Whole を除外する場合
-      if (!(name = normalizeOctatonicName(name))) continue;
+      var name = normalizeOctatonicName(scalesInMask[n].name);
+      if (!name) continue;
 
       if (selectedMood === 0 || scalesInMask[n].moods.indexOf(selectedMood) !== -1) {
-        // filteredNames.push(scalesInMask[n].name);  // 元の名前で表示される
         filteredNames.push(name); // normalizeOctatonicName が存在しない時は何もしない（元の名前）
       }
     }
@@ -231,7 +249,7 @@ analyzeButtonValue.setValueChangeCallback(function () {
         mask: maskInt,
         names: filteredNames,
         score: percentage,
-        moods: scalesInMask.map(function (x) { return x.moods; })   // mood 情報を保存
+        moods: scalesInMask.map(function (x) { return x.moods; })  // mood 情報を保存
       });
     }
   }
@@ -271,6 +289,11 @@ analyzeButtonValue.setValueChangeCallback(function () {
     scoreGroups[scoreStr].push(res.names);
   }
 
+  // 適合率の降順にソート
+  scoreKeys.sort(function (a, b) {
+    return parseFloat(b) - parseFloat(a);
+  });
+
   // 上位のスコアグループをいくつか表示（適合率70％以上の上位5つのスコア帯まで表示）
   var numScoresToShow = Math.min(5, scoreKeys.length);
 
@@ -300,8 +323,8 @@ analyzeButtonValue.setValueChangeCallback(function () {
       }
       formattedNames += line.slice(0, -3); // 最後の不要な " / " を削除
       */
-      // 改行しない場合
-      var formattedNames = words.join(" / ");
+      // 改行しない場合（varで再宣言ではなく、値を上書き）
+      formattedNames = words.join(" / ");
 
       outputText += "  " + formattedNames + "\n";
     }
@@ -314,6 +337,7 @@ analyzeButtonValue.setValueChangeCallback(function () {
 
   // ノート解析かどうか判定
   var header = "";
+  /*
   if (selection.hasSelectedNotes()) {
     var startBlick = filteredNotes[0].getOnset();
     var endBlick = filteredNotes[filteredNotes.length - 1].getEnd();
@@ -323,14 +347,27 @@ analyzeButtonValue.setValueChangeCallback(function () {
     header = "["
       + SV.T("Note Analysis") + ": "
       + SV.T("Bars") + " " + startBar + " " + SV.T("to") + " " + endBar
-      + "]";
+      + "]";*/
+
+  if (filteredNotes && filteredNotes.length > 0) {
+    var startBlick = filteredNotes[0].getOnset();
+    var endBlick = filteredNotes[filteredNotes.length - 1].getEnd();
+    var TA = SV.getProject().getTimeAxis();
+    var startBar = TA.getMeasureAt(startBlick);
+    var endBar = TA.getMeasureAt(endBlick);
+
+    header = "[" + SV.T("Note Analysis") + ": "
+      + SV.T("Bars") + " " + startBar + " " + SV.T("to") + " " + endBar + "]";
+
   } else {
     header = "";  // Group解析のヘッダー情報はなし
   }
 
+
   // 保存
   nowGroupRef.setScriptData("scaleAnalyzer_text", outputText.trim());  // 解析結果のUI表示用データ
-  nowGroupRef.setScriptData("scaleAnalyzer_raw", JSON.stringify(results));  // 解析結果のJSONデータ（整形前のデータ）
+  nowGroupRef.setScriptData("scaleAnalyzer_raw", JSON.stringify(fullResults));
+  // 解析結果のJSONデータ（整形前のデータ）
   nowGroupRef.setScriptData("scaleAnalyzer_header", header);  // ヘッダー情報
 
   // mood の選択状態を保存
@@ -348,9 +385,8 @@ analyzeButtonValue.setValueChangeCallback(function () {
 // mood 絞り込み（JSON を再整形）
 function rebuildTextFromRaw(rawJson, mood) {
   var results = JSON.parse(rawJson);
-  var output = "";
 
-  // mood 絞り込み
+  // mood フィルタ（絞り込み）
   var filtered = [];
   for (var i = 0; i < results.length; i++) {
     var names = results[i].names.filter(function (n, idx) {
@@ -358,23 +394,50 @@ function rebuildTextFromRaw(rawJson, mood) {
     });
     if (names.length > 0) {
       filtered.push({
+        mask: results[i].mask,
         score: results[i].score,
         names: names
       });
     }
   }
 
-  // ソート
-  filtered.sort(function (a, b) { return b.score - a.score; });
+  // score ごとにグループ化
+  var scoreGroups = {};
+  var scoreKeys = [];
 
-  // 整形
   for (var i = 0; i < filtered.length; i++) {
-    output += "【" + SV.T("Match") + " " + filtered[i].score.toFixed(1) + "%】\n";
-    output += "  " + filtered[i].names.join(" / ") + "\n\n";
+    var scoreStr = filtered[i].score.toFixed(1);
+
+    if (!scoreGroups[scoreStr]) {
+      scoreGroups[scoreStr] = [];
+      scoreKeys.push(scoreStr);
+    }
+
+    // 同じ構成音（mask）のスケールは同じ行にまとめる
+    scoreGroups[scoreStr].push(filtered[i].names);
+  }
+
+  // 適合率の降順にソート
+  scoreKeys.sort(function (a, b) {
+    return parseFloat(b) - parseFloat(a);
+  });
+
+  // 表示整形
+  var output = "";
+  for (var i = 0; i < scoreKeys.length; i++) {
+    var scoreStr = scoreKeys[i];
+    output += "【" + SV.T("Match:") + " " + scoreStr + "%】\n";
+
+    var groups = scoreGroups[scoreStr];
+    for (var g = 0; g < groups.length; g++) {
+      output += "  " + groups[g].join(" / ") + "\n";
+    }
+    output += "\n";
   }
 
   return output.trim();
 }
+
 
 
 // プロジェクト内の全グループの解析データ数をカウント
@@ -444,6 +507,9 @@ moodCombo.setValueChangeCallback(function () {
 
   var rebuilt = rebuildTextFromRaw(raw, moodCombo.getValue());
 
+  // 絞り込み後のテキストを保存
+  nowGroupRef.setScriptData("scaleAnalyzer_text", rebuilt);
+
   if (header && header !== "") {
     textValue.setValue(header + "\n" + rebuilt);
   } else {
@@ -453,26 +519,31 @@ moodCombo.setValueChangeCallback(function () {
 
 
 
+
+
 // グループ選択変更・クリア時にテキストを自動更新
 var mainSelection = mainEditor.getSelection();
 
 function onSelectionChanged() {
   var nowGroupRef = mainEditor.getCurrentGroup();
-  var savedText = nowGroupRef.getScriptData("scaleAnalyzer_text");
-  var savedHeader = nowGroupRef.getScriptData("scaleAnalyzer_header");
-  // mood の選択状態を復元
-  var savedMood = nowGroupRef.getScriptData("scaleAnalyzer_mood");
+  var raw = nowGroupRef.getScriptData("scaleAnalyzer_raw");
+  var header = nowGroupRef.getScriptData("scaleAnalyzer_header");
+  var savedMood = nowGroupRef.getScriptData("scaleAnalyzer_mood");  // mood の選択状態を復元
+
   if (savedMood != null) {
     moodCombo.setValue(parseInt(savedMood));
   } else {
     moodCombo.setValue(0);
   }
 
-  if (savedText) {
-    if (savedHeader && savedHeader !== "") {  // ノート解析の場合ヘッダーを表示
-      textValue.setValue(savedHeader + "\n" + savedText);
-    } else {
-      textValue.setValue(savedText);  // グループ解析の場合ヘッダーを表示しない
+  if (raw) {
+    var rebuilt = rebuildTextFromRaw(raw, moodCombo.getValue());
+
+    // 表示テキストを mood に合わせて再構築
+    if (header && header !== "") {  // ノート解析の場合ヘッダーを表示
+      textValue.setValue(header + "\n" + rebuilt);
+    } else {  // グループ解析の場合ヘッダーを表示しない
+      textValue.setValue(rebuilt);
     }
   } else {
     textValue.setValue(SV.T("Analyze Scales"));
@@ -488,6 +559,9 @@ mainSelection.registerSelectionCallback(function (type, isSelected) {
 mainSelection.registerClearCallback(function (type) {
   onSelectionChanged();
 });
+
+
+
 
 // サイドパネルのUI構築
 function getSidePanelSectionState() {

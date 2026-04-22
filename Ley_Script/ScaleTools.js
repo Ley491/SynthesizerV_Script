@@ -10,10 +10,10 @@
 */
 
 // デバッグモード
-var debugMode = true;
+var debugMode = false;
 
 // 8度・4度・6度・7度移動ボタンを表示するかどうか
-var showAdvancedIntervals = true;
+var showAdvancedIntervals = false;
 
 
 function getClientInfo() {

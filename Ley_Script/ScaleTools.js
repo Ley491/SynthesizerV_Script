@@ -10,7 +10,7 @@
 */
 
 // デバッグモード
-var debugMode = false;
+var debugMode = true;
 
 // 8度・4度・6度・7度移動ボタンを表示するかどうか
 var showAdvancedIntervals = true;
@@ -335,7 +335,10 @@ function correctScaleOnly() {
 
       // デバッグモード
       if (debugMode) {
-        var bar = TA.getMeasureAt(note.getOnset());
+        // var bar = TA.getMeasureAt(note.getOnset());　// グループ相対時間
+        var groupRef = SV.getMainEditor().getCurrentGroup();
+        var bar = TA.getMeasureAt(note.getOnset() + groupRef.getTimeOffset());
+        // プロジェクト絶対時間
         var lyric = note.getLyrics();
 
         logText.setValue(
@@ -353,14 +356,20 @@ function correctScaleOnly() {
       return;
     }
 
+    /* 範囲内も全てログに出す場合
     var onset = note.getOnset();
-    var bar = TA.getMeasureAt(onset); // 小節数のカウントは0から
+    // var bar = TA.getMeasureAt(onset); // グループ相対時間
+    var groupRef = SV.getMainEditor().getCurrentGroup();
+    var bar = TA.getMeasureAt(onset + groupRef.getTimeOffset());
+    // プロジェクト絶対時間
 
     // ログに小節番号（1から）と歌詞と音名を表示
     var lyric = note.getLyrics();
+    // 小節数のカウントは0からなので+1する
     logs.push(
       (bar + 1) + SV.T("Bars") + "  「" + lyric + "」 : " + pitchToName(pitch) + " → " + pitchToName(newPitch)
     );
+    */
 
     // 後からsetPitchでまとめて適用
     planned.push({ note: note, oldPitch: pitch, newPitch: newPitch });
@@ -389,8 +398,12 @@ function correctScaleOnly() {
 
     // ログに小節番号（1から）と歌詞と音名を表示
     if (debugMode) {
-      var bar = TA.getMeasureAt(onset); // 小節数のカウントは0から
+      // var bar = TA.getMeasureAt(onset); // 小節数のカウントは0から
+      var groupRef = SV.getMainEditor().getCurrentGroup();
+      var bar = TA.getMeasureAt(onset + groupRef.getTimeOffset());
+      // プロジェクト絶対時間
       var lyric = note.getLyrics();
+      // 小節数のカウントは0からなので+1する
       logs.push(
         (bar + 1) + SV.T("Bars") + "  「" + lyric + "」 : " +
         pitchToName(oldPitch) + " → " + pitchToName(newPitch)
@@ -466,6 +479,8 @@ function moveScaleStep(step) {
     var originalPitch = note.getPitch();
     var pitch = originalPitch;
 
+    var isOut = false; // 範囲外ノート記録フラグ
+
     var pc = pitch % 12;
 
     // スケール外なら correctScaleOnly と同じ snapToNearest を使う
@@ -474,19 +489,23 @@ function moveScaleStep(step) {
 
       // 範囲外ノートのチェック
       if (!isPitchSafe(snapped)) {
-
+        /*
         // デバッグモード
         if (debugMode) {
-          var bar = TA.getMeasureAt(note.getOnset());
+          // var bar = TA.getMeasureAt(note.getOnset());　// グループ相対時間
+          var groupRef = SV.getMainEditor().getCurrentGroup();
+          var bar = TA.getMeasureAt(note.getOnset() + groupRef.getTimeOffset());
+          // プロジェクト絶対時間
           var lyric = note.getLyrics();
 
+          var mark = usedSnap ? "※" : ""; // スケール外修正したノートに※をつける
           logText.setValue(
             SV.T("Out of range after correction: ") + "\n" +
             (bar + 1) + SV.T("Bars") + "  「" + lyric + "」 : " +
-            pitchToName(pitch) + " → " + pitchToName(snapped)
+            pitchToName(pitch) + " → " + pitchToName(snapped) + mark
           );
           showLogText.setValue(true);
-        }
+        }*/
 
         // 一時メッセージ
         showTemporaryMessage(SV.T("⚠ Cancel moving the notes"), 3000);
@@ -494,9 +513,11 @@ function moveScaleStep(step) {
         return;
       }
 
+      // snapped を使って、スケール上の位置に確定
       if (snapped !== pitch) {
         usedSnap = true;
         pitch = snapped;
+        isOut = true;
       }
     }
 
@@ -519,12 +540,16 @@ function moveScaleStep(step) {
 
     var newPitch = scaleLine[targetIdx];
 
+    /* 重複チェックしてたため削除
     // 範囲外ノートのチェック
     if (!isPitchSafe(newPitch)) {
 
       // デバッグモード
       if (debugMode) {
-        var bar = TA.getMeasureAt(note.getOnset());
+        // var bar = TA.getMeasureAt(note.getOnset());　// グループ相対時間
+        var groupRef = SV.getMainEditor().getCurrentGroup();
+        var bar = TA.getMeasureAt(note.getOnset() + groupRef.getTimeOffset());
+        // プロジェクト絶対時間
         var lyric = note.getLyrics();
 
         logText.setValue(
@@ -539,13 +564,15 @@ function moveScaleStep(step) {
       SV.refreshSidePanel();
       return;
     }
+    */
 
     // setPitch しない。後でまとめて適用する。
     planned.push({
       note: note,
       oldPitch: originalPitch,
       snappedPitch: pitch,
-      newPitch: newPitch
+      newPitch: newPitch,
+      outOfScale: isOut // 範囲外ノート記録
     });
   }
 
@@ -591,11 +618,16 @@ function moveScaleStep(step) {
 
     // ログに小節番号（1から）と歌詞と音名を表示
     if (debugMode) {
-      var bar = TA.getMeasureAt(onset); // 小節数のカウントは0から
+      // var bar = TA.getMeasureAt(onset); // 小節数のカウントは0から
+      var groupRef = SV.getMainEditor().getCurrentGroup();
+      var bar = TA.getMeasureAt(onset + groupRef.getTimeOffset());
+      // プロジェクト絶対時間
       var lyric = note.getLyrics();
+      var mark = item.outOfScale ? "※" : ""; // 範囲外ノートに※をつける
+      // 小節数のカウントは0からなので+1する
       logs.push(
         (bar + 1) + SV.T("Bars") + "「" + lyric + "」: " +
-        pitchToName(oldPitch) + " → " + pitchToName(newPitch)
+        pitchToName(oldPitch) + " → " + pitchToName(newPitch) + mark
       );
     }
   }
@@ -684,7 +716,9 @@ function movePitchByInterval(semitoneOffset) {
 
       // デバッグログ
       if (debugMode) {
-        var bar = TA.getMeasureAt(note.getOnset());
+        // var bar = TA.getMeasureAt(note.getOnset());　// グループ相対時間
+        var bar = TA.getMeasureAt(note.getOnset() + groupRef.getTimeOffset());
+        // プロジェクト絶対時間
         var lyric = note.getLyrics();
 
         logText.setValue(
@@ -723,7 +757,11 @@ function movePitchByInterval(semitoneOffset) {
 
     // ログ（debugMode のときだけ）
     if (debugMode) {
-      var bar = TA.getMeasureAt(onset);
+      // var bar = TA.getMeasureAt(onset);
+      // グループ相対時間
+      var groupRef = SV.getMainEditor().getCurrentGroup();
+      var bar = TA.getMeasureAt(onset + groupRef.getTimeOffset());
+      // プロジェクト絶対時間      
       var lyric = note.getLyrics();
 
       logs.push(

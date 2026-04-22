@@ -43,6 +43,7 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
     - スマートピッチ編集ツールやスマートピッチペンツール使用時に使うと便利かも？
 - チェックボックスの「再生位置のノートを取得」をONにすると、常にノートが未選択状態でも再生バーの位置にあるノートの歌詞と音素を取得し続けます。
     - 此岸さくら氏の ParameterBox.js の monitorParameter を参考。
+    - OFFの時は、選択ノートを前/後ろのノートに変更できるボタンが表示されます。
 
 
 ### ScrollSettings_UI.js
@@ -104,7 +105,7 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
 
 ### SelectNotes_UI.js
 - スクリプトパネル用ノート選択スクリプト（統合版）
-    - SelectNotesBefore.js, SelectNotesAfter.js, SelectNotesByLyrics.jsの3つのノート選択系スクリプトを統合したもの。
+    - SelectNotesBefore.js, SelectNotesAfter.js, SelectNotesByLyrics.js, SelectNotesBetween.js の4つのノート選択系スクリプトを統合したもの。
         - 前を選択: 選択中のノートを基準に、そのノート自身と前方のノートをすべて選択する。
         - 後ろを選択: 選択中のノートを基準に、そのノート自身と後方のノートをすべて選択する。
         - 指定範囲を選択: 選択ノートと再生バーの位置を基準に、その2点の間にあるノートをすべて選択する。
@@ -137,6 +138,14 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
 
 
 ## 更新履歴
+
+### 2026-04-22
+- LyricsPhonemesEditor.js を更新。
+    - 選択ノートを前/後ろのノートに変更できるボタンを追加。
+        - 「再生位置のノートを取得」の機能がOFFの時のみ表示。
+    - 音素・歌詞入力欄でEnterキーを押したらすぐに適用されるように変更。
+- ScaleAnalyzer.js を更新。
+    - 選択中のノートからスケール解析を実行した時に解析結果に表示される小節番号をグループ内小節番号からプロジェクト内小節番号に変更。
 
 ### 2026-04-18
 - ScaleTools.js を追加。

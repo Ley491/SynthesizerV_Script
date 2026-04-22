@@ -14,7 +14,7 @@ function getClientInfo() {
   return {
     "name": "Scale Analyzer",
     "author": "Ley",
-    "versionNumber": 1.2,
+    "versionNumber": 1.3,
     "minEditorVersion": 131330,
     "type": "SidePanelSection",
     "category": "Ley Script"

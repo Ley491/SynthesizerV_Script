@@ -7,6 +7,7 @@
   - スマートピッチ編集ツールやスマートピッチペンツール使用時に使うと便利。
 - チェックボックスの「再生位置のノートを取得」をONにすると、常にノートが未選択状態でも再生バーの位置にあるノートの歌詞と音素を取得し続けます。（
   - 此岸さくら氏の ParameterBox.js の monitorParameter を参考
+  - OFFの時は選択ノートの対象を前/後ろのノートに変更できるボタンが表示されます。
 )
 */
 
@@ -14,10 +15,10 @@ function getClientInfo() {
   return {
     "name": ".LyricsPhonemesEditor",
     "author": "Ley",
-    "versionNumber": 1.3,
+    "versionNumber": 1.4,
     "minEditorVersion": 131330,
     "type": "SidePanelSection",
-    "category": "Ley Script"
+    "category": "Ley Script",
   };
 }
 
@@ -40,7 +41,9 @@ function getTranslations(langCode) {
       // ["Skip br", "brをスキップする"],,
       // ["Skip a-z", "a-zをスキップする"],
       ["Reset Phoneme", "音素をリセット"],
-      ["Apply", "適用"]
+      ["Apply", "適用"],
+      ["◀ Previous", "◀ 前のノート"],
+      ["Next ▶", "次のノート ▶"]
     ];
   }
   return [];
@@ -56,6 +59,12 @@ var phonemesField = SV.create("WidgetValue"); // 音素編集
 var resetPhonemeButton = SV.create("WidgetValue"); // 音素編集をリセット
 var applyButtonValue = SV.create("WidgetValue"); // 適用ボタン
 var languageSelect = SV.create("WidgetValue"); // 歌唱言語プルダウン
+var prevNoteButton = SV.create("WidgetValue");  // 前のノートへ移動
+var nextNoteButton = SV.create("WidgetValue");  // 次のノートへ移動
+var lastLyricsValue = ""; // 歌詞欄の最終適用値（Enter検出用）
+var lastPhonemesValue = ""; // 音素欄の最終適用値（Enter検出用）
+
+
 
 // デフォルト値
 selectAtPlaybackCheck.setValue(false); // デフォルトはOFF
@@ -142,6 +151,7 @@ selectAtPlaybackCheck.setValueChangeCallback(function (value) {
     // OFFに戻したら現在の選択ノートを反映
     onSelectionChanged();
   }
+  SV.refreshSidePanel();  // ON/OFFでボタンの表示を変えるため
 });
 
 // ボタン式再生位置のノートを取得コールバック
@@ -241,7 +251,7 @@ function getSelectedNotes() {
 }
 */
 
-// Note selection callback
+// ノート選択コールバック
 SV.getMainEditor().getSelection().registerSelectionCallback(function (selectionType, isSelected) {
   if (selectionType == "note") {
     onSelectionChanged();
@@ -264,6 +274,86 @@ resetPhonemeButton.setValueChangeCallback(function () {
   phonemesField.setValue("");
 });
 
+// 前のノートへ移動
+prevNoteButton.setValueChangeCallback(function () {
+  moveSelection(-1);
+  prevNoteButton.setValue(0);
+});
+
+// 次のノートへ移動
+nextNoteButton.setValueChangeCallback(function () {
+  moveSelection(1);
+  nextNoteButton.setValue(0);
+});
+
+// 歌詞欄のEnterを検知して適用
+lyricsField.setValueChangeCallback(function (newValue) {
+  // Apply ボタンの中身をそのまま呼ぶ
+  var selection = SV.getMainEditor().getSelection();
+  var notes = selection.getSelectedNotes();
+  if (notes.length == 0) return;
+
+  var note = notes[0];
+
+  var lyric = lyricsField.getValue();
+  if (lyric && lyric.trim() !== "") {
+    note.setLyrics(lyric);
+  }
+
+  var ph = phonemesField.getValue();
+  if (ph && ph.trim() !== "") {
+    note.setPhonemes(ph);
+  } else {
+    note.setPhonemes("");
+  }
+
+  var idx = languageSelect.getValue();
+  var value = languageCodes[idx];
+  var attr3 = note.getAttributes();
+  if (value === "default") {
+    delete attr3.languageOverride;
+  } else {
+    attr3.languageOverride = value;
+  }
+  note.setAttributes(attr3);
+});
+
+
+
+// 音素欄のEnterを検知して適用
+phonemesField.setValueChangeCallback(function (newValue) {
+  var selection = SV.getMainEditor().getSelection();
+  var notes = selection.getSelectedNotes();
+  if (notes.length == 0) return;
+
+  var note = notes[0];
+
+  var lyric = lyricsField.getValue();
+  if (lyric && lyric.trim() !== "") {
+    note.setLyrics(lyric);
+  }
+
+  var ph = phonemesField.getValue();
+  if (ph && ph.trim() !== "") {
+    note.setPhonemes(ph);
+  } else {
+    note.setPhonemes("");
+  }
+
+  var idx = languageSelect.getValue();
+  var value = languageCodes[idx];
+  var attr3 = note.getAttributes();
+  if (value === "default") {
+    delete attr3.languageOverride;
+  } else {
+    attr3.languageOverride = value;
+  }
+  note.setAttributes(attr3);
+});
+
+
+
+
 // 再生位置のノートを選択する関数
 function selectNoteAtPlayback() {
   var groupReference = SV.getMainEditor().getCurrentGroup();
@@ -274,7 +364,8 @@ function selectNoteAtPlayback() {
   var playback = SV.getPlayback();
   var timeAxis = SV.getProject().getTimeAxis();
   var seconds = playback.getPlayhead();
-  if (seconds === null) return null;
+  // if (seconds === null) return null;    // 起動直後エラーの可能性
+  if (typeof seconds !== "number" || isNaN(seconds)) return null;  // 数値である場合はOK
   var position = timeAxis.getBlickFromSeconds(seconds);
   var target = position - groupReference.getTimeOffset();
 
@@ -355,22 +446,56 @@ function onSelectionChanged() {
   }
 }
 
+// 前後のノートに移動する
+function moveSelection(offset) {
+  var selection = SV.getMainEditor().getSelection();
+  var notes = selection.getSelectedNotes();
+  if (notes.length !== 1) return;
+
+  var currentNote = notes[0];
+
+  // 現在のグループを取得
+  var groupRef = SV.getMainEditor().getCurrentGroup();
+  if (!groupRef) return;
+  var group = groupRef.getTarget();
+  if (!group || typeof group.getNumNotes !== "function") return;
+
+  var num = group.getNumNotes();
+  var idx = currentNote.getIndexInParent();
+  var nextIdx = idx + offset;
+
+  if (nextIdx < 0 || nextIdx >= num) return;
+
+  var nextNote = group.getNote(nextIdx);
+
+  // 選択を切り替える
+  selection.clearAll();
+  selection.selectNote(nextNote);
+
+  // UI 更新
+  onSelectionChanged();
+}
+
 
 // Panel section（パネルUI）
 function getSidePanelSectionState() {
-  var section = {
+
+  var showManualButtons = !selectAtPlaybackCheck.getValue();
+
+  return {
     "title": SV.T("Lyrics/Phonemes Editor"),
     "rows": [
-      { // 再生位置のノートを取得する
+
+      {
         "type": "Container",
         "columns": [
-          {
+          {  // 常に再生位置のノートを取得（ON/OFF切り替え）
             "type": "CheckBox",
             "text": SV.T("Select note at playback position"),
             "value": selectAtPlaybackCheck,
             "width": 0.7
           },
-          {
+          { // 再生位置のノートを取得する
             "type": "Button",
             "text": SV.T("Get note at playback"),
             "value": getPlaybackNoteButton,
@@ -378,92 +503,190 @@ function getSidePanelSectionState() {
           }
         ]
       },
-      {
-        "type": "Label",
-        "text": SV.T("Language"),
-      },
+
+      // ◀  ▶ ボタン（OFF のときだけ）
+      showManualButtons ? {
+
+        "type": "Container",
+        "columns": [
+          { // 前のノートへ移動
+            "type": "Button",
+            "text": SV.T("◀ Previous"),
+            "value": prevNoteButton,
+            "width": 0.4
+          },
+          // { "type": "Button", "text": SV.T("Get note at playback"), "value": getPlaybackNoteButton, "width": 0.2 },
+          { // 次のノートへ移動
+            "type": "Button",
+            "text": SV.T("Next ▶"),
+            "value": nextNoteButton,
+            "width": 0.4
+          }
+        ]
+      } : null,
+
+      { "type": "Label", "text": SV.T("Language") },
       {
         "type": "Container",
         "columns": [
-          { // 歌唱言語
+          {   // 歌唱言語選択
             "type": "ComboBox",
             "choices": languageChoices,
             "value": languageSelect
           }
         ]
       },
+      { "type": "Label", "text": SV.T("Phonemes") },
       {
-        "type": "Label",
-        "text": SV.T("Phonemes")
-      },
-      {  // 音素編集エリア
         "type": "Container",
         "columns": [
-          {
-            "type": "TextArea",
+          {   // 音素編集エリア
+            "type": "TextBox",
             "value": phonemesField,
-            "height": 30,
             "width": 1.0
           }
         ]
       },
+      { "type": "Label", "text": SV.T("Lyrics") },
       {
-        "type": "Label",
-        "text": SV.T("Lyrics")
-      },
-      { // 歌詞編集エリア
         "type": "Container",
         "columns": [
-          {
-            "type": "TextArea",
+          {   // 歌詞編集エリア
+            "type": "TextBox",
             "value": lyricsField,
-            "height": 30, // 100
             "width": 1.0
           }
         ]
       },
-      /*
-       { // brを除外するチェックボックス
-         "type": "Container",
-         "columns": [
-           {
-             "type": "CheckBox",
-             "text": SV.T("Skip br"),
-             "value": skipBr,
-             "width": 1.0
-           }
-         ]
-       },
-       { // a-zを除外するチェックボックス
-         "type": "Container",
-         "columns": [
-           {
-             "type": "CheckBox",
-             "text": SV.T("Skip a-z"),
-             "value": skipAZ,
-             "width": 1.0
-           }
-         ]
-       },
-       */
       {
         "type": "Container",
         "columns": [
-          { // 適用ボタン
+          { // 適用
             "type": "Button",
             "text": SV.T("Apply"),
-            "width": 0.5, // 1.0
-            "value": applyButtonValue
+            "value": applyButtonValue,
+            "width": 0.5
           },
-          { // 音素編集のリセットボタン
+          { // 音素リセット
             "type": "Button",
             "text": SV.T("Reset Phoneme"),
-            "width": 0.5,
-            "value": resetPhonemeButton
+            "value": resetPhonemeButton,
+            "width": 0.5
           }
         ]
-      },
-    ]
+      }
+    ].filter(Boolean) // ← null を除去
   };
-  return section;
 }
+
+/*
+
+function getSidePanelSectionState() {
+  var rows = [
+    { // 再生位置のノートを取得する
+      "type": "Container",
+      "columns": [
+        {
+          "type": "CheckBox",
+          "text": SV.T("Select note at playback position"),
+          "value": selectAtPlaybackCheck,
+          "width": 0.7
+        },
+        {
+          "type": "Button",
+          "text": SV.T("Get note at playback"),
+          "value": getPlaybackNoteButton,
+          "width": 0.3
+        }
+      ]
+    },
+
+    {
+      "type": "Label",
+      "text": SV.T("Language"),
+    },
+    {
+      "type": "Container",
+      "columns": [
+        { // 歌唱言語
+          "type": "ComboBox",
+          "choices": languageChoices,
+          "value": languageSelect
+        }
+      ]
+    },
+    {
+      "type": "Label",
+      "text": SV.T("Phonemes")
+    },
+    {  // 音素編集エリア
+      "type": "Container",
+      "columns": [
+        {
+          "type": "TextArea",
+          "value": phonemesField,
+          "height": 30,
+          "width": 1.0
+        }
+      ]
+    },
+    {
+      "type": "Label",
+      "text": SV.T("Lyrics")
+    },
+    { // 歌詞編集エリア
+      "type": "Container",
+      "columns": [
+        {
+          "type": "TextArea",
+          "value": lyricsField,
+          "height": 30, // 100
+          "width": 1.0
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "columns": [
+        { // 適用ボタン
+          "type": "Button",
+          "text": SV.T("Apply"),
+          "width": 0.5,
+          "value": applyButtonValue
+        },
+        { // 音素編集のリセットボタン
+          "type": "Button",
+          "text": SV.T("Reset Phoneme"),
+          "width": 0.5,
+          "value": resetPhonemeButton
+        }
+      ]
+    },
+  ];
+  // ★ selectAtPlaybackCheck が OFF のときだけ追加する
+  if (!selectAtPlaybackCheck.getValue()) {
+    rows.push({
+      "type": "Container",
+      "columns": [
+        {
+          "type": "Button",
+          "text": SV.T("◀ Previous"),
+          "width": 0.5,
+          "value": prevNoteButton
+        },
+        {
+          "type": "Button",
+          "text": SV.T("Next ▶"),
+          "width": 0.5,
+          "value": nextNoteButton
+        }
+      ]
+    });
+  }
+
+  return {
+    "title": SV.T("Lyrics/Phonemes Editor"),
+    "rows": rows
+  };
+}
+*/

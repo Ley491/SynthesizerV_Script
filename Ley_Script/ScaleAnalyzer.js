@@ -353,8 +353,13 @@ analyzeButtonValue.setValueChangeCallback(function () {
     var startBlick = filteredNotes[0].getOnset();
     var endBlick = filteredNotes[filteredNotes.length - 1].getEnd();
     var TA = SV.getProject().getTimeAxis();
-    var startBar = TA.getMeasureAt(startBlick);
-    var endBar = TA.getMeasureAt(endBlick);
+    // グループのオフセットを考慮して小節数を計算（プロジェクトの絶対時間）
+    var offset = nowGroupRef.getTimeOffset();
+    var startBar = TA.getMeasureAt(startBlick + offset) + 1;
+    var endBar = TA.getMeasureAt(endBlick + offset) + 1;
+    // グループのオフセットを考慮しない場合（グループ内での相対時間）
+    // var startBar = TA.getMeasureAt(startBlick);
+    // var endBar = TA.getMeasureAt(endBlick);
 
     header = "[" + SV.T("Note Analysis") + ": "
       + SV.T("Bars") + " " + startBar + " " + SV.T("to") + " " + endBar + "]";

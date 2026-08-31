@@ -63,6 +63,9 @@ var prevNoteButton = SV.create("WidgetValue");  // 前のノートへ移動
 var nextNoteButton = SV.create("WidgetValue");  // 次のノートへ移動
 var lastLyricsValue = ""; // 歌詞欄の最終適用値（Enter検出用）
 var lastPhonemesValue = ""; // 音素欄の最終適用値（Enter検出用）
+// コードから setValue() を呼び出している最中かどうかを示すフラグ
+var isUpdatingFromCode = false; // true の間はコールバックによる自動適用を抑制する
+var editingNoteIndex = -1; // 現在UI（歌詞・音素欄）に表示・編集中のノートのインデックス
 
 
 
@@ -114,6 +117,7 @@ function monitorPlaybackNote() {
     if (note) {
       // 取得したノートが前回と違う場合のみテキストを更新する（入力中の上書き防止）
       if (lastNoteIndex !== note.getIndexInParent()) {
+        isUpdatingFromCode = true;  // プログラムからのUI更新中フラグを立てる（コールバック抑制）
         lyricsField.setValue(note.getLyrics());
         var ph = note.getPhonemes();
         phonemesField.setValue(ph && ph.trim() !== "" ? ph : "");
@@ -128,12 +132,17 @@ function monitorPlaybackNote() {
           }
         }
         lastNoteIndex = note.getIndexInParent();
+        editingNoteIndex = note.getIndexInParent(); // 表示中のノートインデックスを記憶
+        isUpdatingFromCode = false; // プログラムからの更新が完了したのでフラグを解除する
       }
     } else {
       // ノートが無くなった場合
       if (lastNoteIndex !== -1) {
+        isUpdatingFromCode = true;  // プログラムからのUI更新中フラグを立てる
         lyricsField.setValue("");
         phonemesField.setValue("");
+        editingNoteIndex = -1;       // 表示中ノートインデックスをクリア
+        isUpdatingFromCode = false; // プログラムからの更新が完了したのでフラグを解除する
         lastNoteIndex = -1;
       }
     }
@@ -158,14 +167,18 @@ selectAtPlaybackCheck.setValueChangeCallback(function (value) {
 getPlaybackNoteButton.setValueChangeCallback(function (value) {
   if (value == 1) {
     var note = selectNoteAtPlayback();
+    isUpdatingFromCode = true; // プログラムからのUI更新中フラグを立てる（コールバック抑制）
     if (note) {
       lyricsField.setValue(note.getLyrics());
       var ph = note.getPhonemes();
       phonemesField.setValue(ph && ph.trim() !== "" ? ph : "");
+      editingNoteIndex = note.getIndexInParent(); // 表示中のノートインデックスを記憶
     } else {
       lyricsField.setValue("");
       phonemesField.setValue("");
+      editingNoteIndex = -1;       // 表示中ノートインデックスをクリア
     }
+    isUpdatingFromCode = false; // プログラムからの更新が完了したのでフラグを解除する
     getPlaybackNoteButton.setValue(0); // ボタンをリセット
   }
 });
@@ -288,12 +301,19 @@ nextNoteButton.setValueChangeCallback(function () {
 
 // 歌詞欄のEnterを検知して適用
 lyricsField.setValueChangeCallback(function (newValue) {
+
+  // コードから setValue() を呼んでいる最中（ノート切り替え時など）は何もしない
+  if (isUpdatingFromCode) return;
+
   // Apply ボタンの中身をそのまま呼ぶ
   var selection = SV.getMainEditor().getSelection();
   var notes = selection.getSelectedNotes();
   if (notes.length == 0) return;
 
   var note = notes[0];
+
+  // 編集開始時のノートと現在選択中のノートが異なる場合（別ノート選択によるフォーカスアウト時等）は適用しない
+  if (editingNoteIndex < 0 || note.getIndexInParent() !== editingNoteIndex) return;
 
   var lyric = lyricsField.getValue();
   if (lyric && lyric.trim() !== "") {
@@ -322,11 +342,17 @@ lyricsField.setValueChangeCallback(function (newValue) {
 
 // 音素欄のEnterを検知して適用
 phonemesField.setValueChangeCallback(function (newValue) {
+  // コードから setValue() を呼んでいる最中（ノート切り替え時など）は何もしない
+  if (isUpdatingFromCode) return;
+
   var selection = SV.getMainEditor().getSelection();
   var notes = selection.getSelectedNotes();
   if (notes.length == 0) return;
 
   var note = notes[0];
+
+  // 編集開始時のノートと現在選択中のノートが異なる場合（別ノート選択によるフォーカスアウト時等）は適用しない
+  if (editingNoteIndex < 0 || note.getIndexInParent() !== editingNoteIndex) return;
 
   var lyric = lyricsField.getValue();
   if (lyric && lyric.trim() !== "") {
@@ -397,11 +423,15 @@ function onSelectionChanged() {
   if (selectAtPlaybackCheck.getValue()) {
     var note = selectNoteAtPlayback();
     if (!note) {
+      isUpdatingFromCode = true;      // プログラムからのUI更新中フラグを立てる（コールバック抑制）
       lyricsField.setValue("");
       phonemesField.setValue("");
+      editingNoteIndex = -1;       // 表示中ノートインデックスをクリア
+      isUpdatingFromCode = false;     // プログラムからの更新が完了したのでフラグを解除する
       return;
     }
     // 歌詞・音素
+    isUpdatingFromCode = true;      // プログラムからのUI更新中フラグを立てる（コールバック抑制）
     lyricsField.setValue(note.getLyrics());
     var ph = note.getPhonemes();
     phonemesField.setValue(ph && ph.trim() !== "" ? ph : "");
@@ -417,17 +447,26 @@ function onSelectionChanged() {
         break;
       }
     }
+    editingNoteIndex = note.getIndexInParent(); // 表示中のノートインデックスを記憶
+    isUpdatingFromCode = false;     // プログラムからの更新が完了したのでフラグを解除する
     return;
 
   }
 
   // 通常モード（選択ノートを反映）
   if (notes.length == 0) {
+    isUpdatingFromCode = true;      // プログラムからのUI更新中フラグを立てる
     lyricsField.setValue("");
     phonemesField.setValue("");
+    editingNoteIndex = -1;       // 表示中ノートインデックスをクリア
+    isUpdatingFromCode = false;     // プログラムからの更新が完了したのでフラグを解除する
     return;
   }
   var note = notes[0];
+
+  // フラグを立ててから setValue() → コールバックを抑制
+  isUpdatingFromCode = true;
+
   // 歌詞・音素
   lyricsField.setValue(note.getLyrics());
   var ph = note.getPhonemes();
@@ -444,6 +483,8 @@ function onSelectionChanged() {
       break;
     }
   }
+  editingNoteIndex = note.getIndexInParent(); // 表示中のノートインデックスを記憶
+  isUpdatingFromCode = false;     // プログラムからの更新が完了したのでフラグを解除する
 }
 
 // 前後のノートに移動する

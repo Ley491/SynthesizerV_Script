@@ -139,6 +139,10 @@ scriptフォルダ（Synthesizer V Studio 2 Proの「スクリプトフォルダ
 
 ## 更新履歴
 
+### 2026-09-01
+- LyricsPhonemesEditor.js を更新。
+    - 選択ノートを切り替えた時、前のノートで編集していた歌詞・音素が適用されてしまう不具合を修正。
+
 ### 2026-04-22
 - LyricsPhonemesEditor.js を更新。
     - 選択ノートを前/後ろのノートに変更できるボタンを追加。
